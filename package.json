@@ -1,0 +1,27 @@
+{
+  "name": "ai-agentpertanahan",
+  "version": "1.0.0",
+  "description": "Agen AI penanganan pengaduan pertanahan: Telegram + Google Drive + Google Sheets + Claude",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "cek": "node scripts/cek-koneksi.js",
+    "authorize-google": "node scripts/authorize-google.js",
+    "test": "node --test test/*.test.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.135.0",
+    "@googleapis/drive": "26.0.2",
+    "@googleapis/sheets": "18.1.1",
+    "docx": "9.6.1",
+    "dotenv": "17.4.2",
+    "google-auth-library": "11.3.1",
+    "grammy": "1.46.0",
+    "zod": "4.6.7"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  }
+}
