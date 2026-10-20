@@ -24,7 +24,7 @@ Catatan jawaban pengguna yang menjadi aturan tetap agen. Bila skill lama (telaah
 - Nilai Status:
   - `Menunggu`: saat pengaduan tercatat.
   - `Proses Penanganan`: setelah PDF Telaahan bertanda tangan diterima.
-  - `Selesai`: setelah ada produk sukel. Pengguna membalas (reply) pesan kasusnya dengan kata "selesai" sambil mengunggah PDF Surat REFF. Agen menyimpan PDF itu di folder pengadu (nama file menunggu konfirmasi pengguna), lalu mengubah Status menjadi `Selesai`.
+  - `Selesai`: setelah ada produk sukel. Pengguna membalas (reply) pesan kasusnya dengan kata "selesai" sambil mengunggah PDF Surat REFF. Agen menyimpan PDF itu di folder pengadu sebagai `Surat REFF_<nama folder>.pdf`, lalu mengubah Status menjadi `Selesai`.
 - Rencana TL ditentukan pengguna lewat chat; tidak diisi otomatis.
 - Pokok Permasalahan dan Teradu diisi saat pengaduan masuk, lalu diperbarui agar sama dengan Telaahan setelah Telaahan disetujui.
 

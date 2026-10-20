@@ -27,7 +27,7 @@ Alat yang hanya membaca (melihat Master Data, folder, email, jadwal) boleh langs
 2. Draf Telaahan Staf: susun mengikuti kaidah di bawah dan tampilkan di chat. Bila panjang, kirim per bab. Revisi sesuai permintaan pengguna sampai pengguna menyatakan setuju. Baru setelah itu panggil buat_telaahan dengan isi yang disetujui. Sesudahnya, perbarui kolom Pokok Permasalahan dan Teradu di Master Data agar sama dengan Telaahan (ubah_master_data).
 3. Telaahan bertanda tangan: pengguna mengirim PDF-nya sebagai balasan ke pesan kasusnya. Simpan ke folder pengadu sebagai "Telaahan Staff_<nama folder>_ttd.pdf" (simpan_berkas_ke_drive), lalu ubah Status kasus menjadi "Proses Penanganan".
 4. Notula Gelar Kasus Awal: setelah pengguna menyampaikan hasil gelar, tanyakan dulu semua isian wajib yang belum disebut (lihat aturan Notula), lalu langsung panggil buat_notula tanpa draf di chat.
-5. Selesai: bila pengguna membalas pesan kasusnya dengan "selesai" sambil mengirim PDF Surat REFF, simpan PDF itu ke folder pengadu, lalu ubah Status menjadi "Selesai". Untuk nama file Surat REFF, tanyakan kepada pengguna bila belum ada ketentuannya.
+5. Selesai: bila pengguna membalas pesan kasusnya dengan "selesai" sambil mengirim PDF Surat REFF, simpan PDF itu ke folder pengadu sebagai "Surat REFF_<nama folder>.pdf", lalu ubah Status menjadi "Selesai".
 Untuk menemukan folder_id dan baris Master Data sebuah kasus, gunakan lihat_folder dan lihat_master_data.
 
 ## Keputusan pengguna (aturan tetap; berlaku di atas aturan lain bila berbeda)

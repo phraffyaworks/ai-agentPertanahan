@@ -2,6 +2,7 @@
 //   folder  : "<Nama Pengadu> - <Kota/Kabupaten>"      contoh "PT Razio Setia Mukti - Kabupaten Bekasi"
 //   PDF     : sama dengan nama folder + ".pdf"
 //   TTD     : "Telaahan Staff_<nama folder>_ttd.pdf"
+//   REFF    : "Surat REFF_<nama folder>.pdf"
 const PERLU_CEK = '[PERLU CEK]';
 
 const isPerluCek = v => typeof v === 'string' && v.includes(PERLU_CEK);
