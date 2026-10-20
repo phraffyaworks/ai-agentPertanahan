@@ -25,3 +25,15 @@ test('nama yang sudah dipakai diberi nomor', () => {
   assert.strictEqual(uniqueName('A.pdf', ['A.pdf', 'A (2).pdf']), 'A (3).pdf');
   assert.strictEqual(uniqueName('A.pdf', ['B.pdf']), 'A.pdf');
 });
+
+test('file .env: nilai diganti di tempat, komentar tetap, izin 600', () => {
+  const fs = require('fs'); const os = require('os'); const path = require('path');
+  const { readEnv, setEnvValues } = require('../src/util/envfile');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'env-'));
+  const tpl = path.join(dir, '.env.example'); const f = path.join(dir, '.env');
+  fs.writeFileSync(tpl, '# komentar\nA=\nB=lama\n');
+  setEnvValues(f, { B: 'baru$&', C: 'tambah' }, tpl);
+  assert.strictEqual(fs.readFileSync(f, 'utf8'), '# komentar\nA=\nB=baru$&\nC=tambah\n');
+  assert.deepStrictEqual(readEnv(f), { A: '', B: 'baru$&', C: 'tambah' });
+  assert.strictEqual(fs.statSync(f).mode & 0o777, 0o600);
+});

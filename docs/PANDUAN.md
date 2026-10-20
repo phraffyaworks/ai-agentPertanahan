@@ -1,6 +1,6 @@
 # Panduan Penyiapan
 
-Panduan ini untuk menjalankan agen di komputer Anda sendiri selama tahap uji coba. Pemindahan ke VPS Hostinger dibahas terpisah setelah sistemnya rapi.
+Langkah 1–3 harus dikerjakan sendiri karena memakai akun Anda (Telegram, Google, Claude). Kira-kira 15–20 menit. Sesudah itu, pemasangan di VPS berjalan otomatis.
 
 Yang akan Anda siapkan:
 
@@ -11,7 +11,7 @@ Yang akan Anda siapkan:
 | 3 | Kunci Claude API | membaca isi PDF pengaduan |
 | 4 | Node.js versi 22 | menjalankan program |
 
-Semua nilai rahasia disimpan di file `.env` di komputer Anda. File itu tidak ikut terunggah ke GitHub.
+Simpan sementara nilai-nilai itu di catatan pribadi. Nilainya nanti ditempel langsung di VPS, bukan dikirim lewat chat.
 
 ---
 
@@ -45,77 +45,32 @@ Kerjakan dengan akun **phraffyaworks@gmail.com** (pemilik folder Otomasi).
 2. Di menu **Billing**, isi saldo kecil untuk uji coba. Anda juga bisa memasang batas pemakaian bulanan.
 3. Di menu **API Keys**, buat kunci baru, lalu simpan nilainya (diawali `sk-ant-`). Kunci hanya ditampilkan sekali.
 
-## Langkah 4 — Memasang program
+## Langkah 4 — Memasang di VPS (otomatis)
+
+Setelah Langkah 1–3 selesai, ikuti [docs/VPS.md](VPS.md). Isinya cukup satu perintah yang ditempel di Browser terminal hPanel. Program akan menanyakan token dan kunci dari Langkah 1–3 satu per satu, mengujinya, lalu menjalankan bot 24 jam.
+
+## (Opsional) Menjalankan di komputer sendiri
+
+Hanya bila ingin mencoba di komputer sebelum di VPS. Jangan jalankan bot di komputer dan di VPS bersamaan, karena satu token bot hanya boleh dipakai di satu tempat.
 
 1. Pasang Node.js versi 22 (LTS).
-   - **Windows:** unduh installer dari https://nodejs.org, lalu jalankan.
-   - **Linux (Ubuntu/Debian):**
-     ```
-     curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-     sudo apt-get install -y nodejs
-     ```
-   Setelah itu buka Terminal (Windows: **Command Prompt**), lalu ketik `node --version`. Hasilnya harus diawali `v22`.
-2. Unduh kode dari GitHub (`Code → Download ZIP`), lalu ekstrak, misalnya ke folder `Documents/ai-agentPertanahan`.
-3. Di Terminal, masuk ke folder itu lalu pasang paket:
-   - **Windows:** `cd Documents\ai-agentPertanahan`
-   - **Linux:** `cd ~/Documents/ai-agentPertanahan`
-
-   Lalu jalankan:
+   - **Windows:** unduh installer dari https://nodejs.org.
+   - **Linux (Ubuntu/Debian):** `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -` lalu `sudo apt-get install -y nodejs`.
+2. Unduh kode dari GitHub (`Code → Download ZIP`), lalu ekstrak.
+3. Buka Terminal (Windows: **Command Prompt**) di folder itu, lalu jalankan:
    ```
    npm install
+   npm run setup
+   npm start
    ```
-
-## Langkah 5 — Mengisi file .env
-
-1. Di folder program, salin file `.env.example` menjadi `.env`.
-   - **Windows:** `copy .env.example .env`
-   - **Linux:** `cp .env.example .env`
-2. Buka `.env` dengan editor teks (Windows: `notepad .env`; Linux: `nano .env`), lalu isi:
-   - `TELEGRAM_BOT_TOKEN=` token dari Langkah 1
-   - `GOOGLE_CLIENT_ID=` dan `GOOGLE_CLIENT_SECRET=` dari Langkah 2
-   - `ANTHROPIC_API_KEY=` kunci dari Langkah 3
-3. Biarkan `TELEGRAM_ALLOWED_USER_IDS` dan `GOOGLE_REFRESH_TOKEN` kosong dulu.
-
-## Langkah 6 — Memberi izin Google
-
-Di Terminal, jalankan:
-```
-npm run authorize-google
-```
-1. Buka alamat yang ditampilkan, lalu masuk dengan phraffyaworks@gmail.com.
-2. Google akan memperingatkan bahwa aplikasi belum diverifikasi. Ini wajar karena aplikasinya buatan Anda sendiri. Pilih **Advanced → Go to Agen Pertanahan**, lalu **Continue/Izinkan**.
-3. Setelah berhasil, refresh token tersimpan otomatis ke `.env`.
-
-## Langkah 7 — Mengetahui ID Telegram Anda
-
-1. Jalankan `npm start`.
-2. Di Telegram, buka bot Anda, lalu kirim `/id`. Bot membalas dengan angka ID Anda.
-3. Hentikan program dengan **Ctrl+C**. Isi angka itu di `.env`, misalnya `TELEGRAM_ALLOWED_USER_IDS=123456789`.
-
-## Langkah 8 — Memeriksa sambungan
-
-```
-npm run cek
-```
-Keempat baris harus diawali `OK`: Telegram, Google Drive, Google Sheets, dan Claude API. Bila ada yang `GAGAL`, pesannya menyebutkan apa yang perlu diperbaiki.
-
-## Langkah 9 — Uji coba
-
-1. Jalankan `npm start`.
-2. Kirim satu PDF pengaduan ke bot.
-3. Setelah selesai, bot membalas dengan nama folder, nama PDF, nomor baris Master Data, dan daftar kolom `[PERLU CEK]`.
-4. Cek hasilnya di folder Otomasi dan Database Raffy.
-
-Program hanya berjalan selama jendela Terminal terbuka. Agar bot menyala 24 jam, program dipindahkan ke VPS (tahap 4).
-
----
+   `npm run setup` menanyakan semua nilai, mengujinya, dan menyimpannya ke file `.env`. Selama bot berjalan, jendela Terminal harus tetap terbuka.
 
 ## Bila ada masalah
 
 | Pesan | Penyebab dan solusi |
 |---|---|
 | `Pengaturan belum diisi di file .env: ...` | Nilai yang disebut belum diisi di `.env`. |
-| `invalid_grant` pada Google | Izin Google kedaluwarsa atau dicabut. Pastikan status aplikasi **In production** (Langkah 2.3), lalu ulangi Langkah 6. |
+| `invalid_grant` pada Google | Izin Google kedaluwarsa atau dicabut. Pastikan status aplikasi **In production** (Langkah 2.3), lalu jalankan `npm run setup` lagi dan pilih ulangi izin Google. |
 | `Kunci Claude API ditolak` | `ANTHROPIC_API_KEY` salah atau sudah dihapus. |
 | `File lebih dari 20 MB` | Batas unduhan bot Telegram. Kecilkan ukuran PDF lalu kirim ulang. |
 | `Header tab Master Data berbeda` | Judul kolom A–P di Database Raffy berubah. Kembalikan judulnya, atau minta penyesuaian program. |

@@ -1,24 +1,17 @@
 // Sekali jalan: meminta izin akses Google Drive & Sheets lalu menyimpan refresh token ke .env.
 // Pemakaian: npm run authorize-google
-const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const readline = require('readline');
 const { loadConfig } = require('../src/config');
 const { SCOPES, createOAuthClient } = require('../src/google/auth');
+const { setEnvValues } = require('../src/util/envfile');
 
 const PORT = 53682;
 const REDIRECT = `http://127.0.0.1:${PORT}/`;
 const ENV_FILE = path.join(__dirname, '..', '.env');
 
-function simpanKeEnv(token) {
-  const line = `GOOGLE_REFRESH_TOKEN=${token}`;
-  let isi = fs.existsSync(ENV_FILE) ? fs.readFileSync(ENV_FILE, 'utf8') : '';
-  isi = /^GOOGLE_REFRESH_TOKEN=.*$/m.test(isi)
-    ? isi.replace(/^GOOGLE_REFRESH_TOKEN=.*$/m, line)
-    : `${isi.replace(/\n?$/, '\n')}${line}\n`;
-  fs.writeFileSync(ENV_FILE, isi);
-}
+const simpanKeEnv = token => setEnvValues(ENV_FILE, { GOOGLE_REFRESH_TOKEN: token });
 
 async function main() {
   const { google } = loadConfig(['googleClient']);

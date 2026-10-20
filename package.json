@@ -7,7 +7,8 @@
     "start": "node src/index.js",
     "cek": "node scripts/cek-koneksi.js",
     "authorize-google": "node scripts/authorize-google.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "setup": "node scripts/setup.js"
   },
   "license": "UNLICENSED",
   "dependencies": {
