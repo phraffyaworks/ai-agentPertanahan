@@ -62,7 +62,7 @@ function siapkan(baseUrl) {
   const { createStore } = require('../src/state/store');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agen-'));
   const riwayat = createRiwayat(dir);
-  const agen = createAgen({ claude: { apiKey: 'sk-ant-uji', model: 'claude-opus-5-5' }, riwayat });
+  const agen = createAgen({ claude: { apiKey: 'sk-ant-uji', model: 'claude-sonnet-5-5', effort: 'medium' }, riwayat });
   const berkas = createBerkasStore(dir, agen.anthropic);
   const log = [];
   const ctx = {
@@ -104,7 +104,8 @@ test('PDF -> catat_pengaduan -> disetujui -> tercatat; riwayat append-only', asy
     const [r1, r2] = fc.permintaan;
     assert.match(r1.headers['anthropic-beta'], /compact-2026-01-12/);
     assert.match(r1.headers['anthropic-beta'], /thinking-binding-controls-2026-08-01/);
-    assert.strictEqual(r1.body.model, 'claude-opus-5-5');
+    assert.strictEqual(r1.body.model, 'claude-sonnet-5-5');
+    assert.deepStrictEqual(r1.body.output_config, { effort: 'medium' });
     assert.strictEqual(r1.body.fallbacks, 'default');
     assert.deepStrictEqual(r1.body.thinking, { type: 'adaptive', block_binding: { prefix_mismatch_behavior: 'drop_block' } });
     assert.match(r1.body.messages[0].content[0].text, /^\[.+ WIB\]$/);

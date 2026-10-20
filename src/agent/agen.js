@@ -32,7 +32,7 @@ function createAgen({ claude, riwayat }) {
     betas: Object.keys(FITUR).filter(k => aktif[k] && FITUR[k].beta).map(k => FITUR[k].beta),
     ...(aktif.cadangan && { fallbacks: 'default' }),
     thinking: aktif.ikatanThinking ? { type: 'adaptive', block_binding: { prefix_mismatch_behavior: 'drop_block' } } : { type: 'adaptive' },
-    output_config: { effort: 'high' },
+    output_config: { effort: claude.effort || 'medium' },
     ...(aktif.ringkasan && { context_management: { edits: [{ type: 'compact_20260112', instructions: INSTRUKSI_RINGKASAN }] } }),
     ...(aktif.cache && { cache_control: { type: 'ephemeral' } }),
     system,

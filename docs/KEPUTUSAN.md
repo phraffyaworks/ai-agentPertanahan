@@ -4,6 +4,7 @@ Catatan jawaban pengguna yang menjadi aturan tetap agen. Bila skill lama (telaah
 
 ## Bentuk asisten
 - Asisten pribadi yang diajak bicara lewat Telegram. Claude membaca setiap pesan dan memutuskan tindakan.
+- Model: Claude Sonnet 5.5 (`claude-sonnet-5-5`) dengan effort `medium`; bisa diganti lewat `CLAUDE_MODEL` dan `CLAUDE_EFFORT` di `.env`.
 - Cakupan: semua kebutuhan pengguna, yaitu pekerjaan pengaduan pertanahan, Gmail, Google Calendar, dan tanya-jawab umum (dengan pencarian web).
 - Sebelum mengubah data atau mengirim sesuatu (folder, berkas, Master Data, dokumen, email, acara), asisten **meminta persetujuan** lewat tombol Setujui/Tolak. Membaca data boleh langsung.
 

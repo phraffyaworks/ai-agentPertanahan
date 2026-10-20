@@ -7,7 +7,8 @@ const DEFAULTS = {
   DRIVE_FOLDER_INDUK_ID: '1oZlzZd7kGSbr556ido6B6pJ_1eiVScZd',
   SPREADSHEET_ID: '16oEsge3_1bmdrMf_j_5KDDYL2_DilODbuLaILg0bYJs',
   SHEET_MASTER: 'Master Data',
-  CLAUDE_MODEL: 'claude-opus-5-5',
+  CLAUDE_MODEL: 'claude-sonnet-5-5',
+  CLAUDE_EFFORT: 'medium',
   DATA_DIR: path.join(__dirname, '..', 'data'),
 };
 
@@ -46,7 +47,7 @@ function loadConfig(groups = ['telegram', 'google', 'claude']) {
       spreadsheetId: get('SPREADSHEET_ID'),
       sheetMaster: get('SHEET_MASTER'),
     },
-    claude: { apiKey: get('ANTHROPIC_API_KEY'), model: get('CLAUDE_MODEL') },
+    claude: { apiKey: get('ANTHROPIC_API_KEY'), model: get('CLAUDE_MODEL'), effort: get('CLAUDE_EFFORT') },
     dataDir: get('DATA_DIR'),
   };
 }
