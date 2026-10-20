@@ -23,7 +23,9 @@ Syarat: kode sudah ada di cabang `main` repositori GitHub, dan repositorinya **p
 5. Program lalu menanyakan nilai satu per satu. Tempel setiap nilai, lalu tekan Enter.
    - Setiap nilai langsung diuji. Bila salah, program meminta ulang.
    - ID Telegram Anda dicari otomatis: program meminta Anda mengirim "halo" ke bot.
-   - Untuk izin Google, program menampilkan sebuah alamat. Buka alamat itu di browser HP atau laptop, lalu izinkan aksesnya.
+   - Untuk izin Google, program menampilkan sebuah alamat. Buka alamat itu di browser HP atau laptop, lalu masuk dengan phraffyaworks@gmail.com.
+   - Pada peringatan "Google hasn't verified this app", tekan **Advanced**, lalu **Go to … (unsafe)**. Ini wajar karena aplikasinya buatan Anda sendiri.
+   - Pada halaman izin, **centang semua kotak akses** (Drive dan Sheets), lalu tekan **Continue**. Bila ada kotak yang tidak dicentang, bot tidak bisa bekerja.
    - Setelah itu browser menampilkan halaman yang gagal dimuat. Itu wajar. Salin alamat lengkap dari address bar, lalu tempel kembali di terminal.
 6. Terakhir, bot dijalankan sebagai layanan yang menyala 24 jam, juga setelah server reboot. Kirim satu PDF ke bot untuk mencoba.
 
