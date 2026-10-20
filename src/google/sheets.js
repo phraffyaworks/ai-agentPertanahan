@@ -15,11 +15,12 @@ const quoteSheet = name => `'${String(name).replace(/'/g, "''")}'`;
 const colLetter = i => String.fromCharCode(65 + i);
 
 // Satu baris Master Data dari hasil pembacaan pengaduan. Kolom N diisi rumus terpisah.
+// Rencana TL (O) dikosongkan: pengguna yang menentukannya lewat chat.
 function buildMasterRow(no, d) {
   return [
     no, d.nomor_agenda, d.tanggal_disposisi, d.perintah_disposisi, d.tanggal_diterima, d.tanggal_surat,
     d.nomor_surat, d.pengadu_prinsipal, d.penerima_kuasa, d.perihal, d.pokok_permasalahan, d.teradu,
-    d.objek_permasalahan, '', d.rencana_tl, STATUS_AWAL,
+    d.objek_permasalahan, '', d.rencana_tl ?? '', STATUS_AWAL,
   ];
 }
 

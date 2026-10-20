@@ -47,22 +47,30 @@ Kerjakan dengan akun **phraffyaworks@gmail.com** (pemilik folder Otomasi).
 
 ## Langkah 4 — Memasang program
 
-1. Pasang Node.js versi 22 (LTS) dari https://nodejs.org. Setelah selesai, buka Terminal (Windows: **Command Prompt**), lalu ketik:
-   ```
-   node --version
-   ```
-   Hasilnya harus diawali `v22`.
-2. Unduh kode dari GitHub (`Code → Download ZIP`), lalu ekstrak, misalnya ke `Documents\ai-agentPertanahan`.
+1. Pasang Node.js versi 22 (LTS).
+   - **Windows:** unduh installer dari https://nodejs.org, lalu jalankan.
+   - **Linux (Ubuntu/Debian):**
+     ```
+     curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+     sudo apt-get install -y nodejs
+     ```
+   Setelah itu buka Terminal (Windows: **Command Prompt**), lalu ketik `node --version`. Hasilnya harus diawali `v22`.
+2. Unduh kode dari GitHub (`Code → Download ZIP`), lalu ekstrak, misalnya ke folder `Documents/ai-agentPertanahan`.
 3. Di Terminal, masuk ke folder itu lalu pasang paket:
+   - **Windows:** `cd Documents\ai-agentPertanahan`
+   - **Linux:** `cd ~/Documents/ai-agentPertanahan`
+
+   Lalu jalankan:
    ```
-   cd Documents\ai-agentPertanahan
    npm install
    ```
 
 ## Langkah 5 — Mengisi file .env
 
 1. Di folder program, salin file `.env.example` menjadi `.env`.
-2. Buka `.env` dengan Notepad, lalu isi:
+   - **Windows:** `copy .env.example .env`
+   - **Linux:** `cp .env.example .env`
+2. Buka `.env` dengan editor teks (Windows: `notepad .env`; Linux: `nano .env`), lalu isi:
    - `TELEGRAM_BOT_TOKEN=` token dari Langkah 1
    - `GOOGLE_CLIENT_ID=` dan `GOOGLE_CLIENT_SECRET=` dari Langkah 2
    - `ANTHROPIC_API_KEY=` kunci dari Langkah 3

@@ -13,7 +13,6 @@ const LABEL = {
   teradu: 'Teradu',
   objek_permasalahan: 'Objek Permasalahan',
   kota_kabupaten_objek: 'Kota/Kabupaten objek',
-  rencana_tl: 'Rencana TL',
 };
 const label = k => LABEL[k] || k;
 
@@ -49,6 +48,8 @@ function laporanSelesai({ kasus, data, masalahSheet }) {
     `Perihal: ${data.perihal}`,
     '',
     ...perluCekList(data),
+    '',
+    'Rencana TL dikosongkan. Anda yang menentukannya lewat chat.',
     ...(masalahSheet.length ? ['', 'Peringatan spreadsheet:', ...masalahSheet.map(m => `- ${m}`)] : []),
     '',
     `ID kasus: ${kasus.id}`,

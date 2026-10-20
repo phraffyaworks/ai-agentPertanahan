@@ -17,7 +17,6 @@ const FIELDS = {
   teradu: 'Nama pihak Teradu.',
   objek_permasalahan: 'Hak atas tanah (jenis dan nomor), desa/kelurahan, kecamatan, kota/kabupaten, provinsi.',
   kota_kabupaten_objek: 'Kota/kabupaten letak OBJEK permasalahan (bukan alamat pengadu atau teradu), diawali "Kota " atau "Kabupaten ", mis. "Kabupaten Bekasi".',
-  rencana_tl: 'Rencana tindak lanjut, diambil dari perintah disposisi.',
 };
 
 const SCHEMA = {
