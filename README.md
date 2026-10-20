@@ -1,28 +1,29 @@
-# Agen Pengaduan Pertanahan
+# Asisten Pribadi Pertanahan (Telegram)
 
-Agen AI untuk Penata Pertanahan Pertama (Subdit Penanganan Sengketa Penetapan Hak dan Pendaftaran Tanah). Agen ini menghubungkan Telegram, Google Drive, Google Sheets, dan Claude.
+Asisten pribadi berbasis Claude untuk Penata Pertanahan Pertama (Subdit Penanganan Sengketa Penetapan Hak dan Pendaftaran Tanah). Asisten diajak bicara lewat Telegram dan bekerja dengan Google Drive, Google Sheets (Database Raffy), Gmail, dan Google Calendar milik pengguna.
 
-Penyiapan langkah demi langkah ada di [docs/PANDUAN.md](docs/PANDUAN.md).
+Penyiapan: [docs/PANDUAN.md](docs/PANDUAN.md), lalu [docs/APPS-SCRIPT.md](docs/APPS-SCRIPT.md) dan [docs/VPS.md](docs/VPS.md).
 
-## Alur
+## Yang bisa dilakukan
+- **Pengaduan:** kirim PDF, lalu asisten membaca, membuat folder `Nama Pengadu - Kota/Kabupaten` di Otomasi, menyimpan PDF dengan nama yang sama, dan mencatat satu baris di Master Data.
+- **Master Data:** menjawab pertanyaan ("kasus mana yang masih Menunggu?") dan mengubah kolom (Rencana TL, Status, dan lainnya).
+- **Telaahan Staf:** draf di chat, revisi lewat percakapan, lalu file .docx yang disimpan di folder pengadu dan dikirim ke Telegram.
+- **Telaahan bertanda tangan dan Surat REFF:** berkas yang dikirim sebagai balasan disimpan ke folder pengadu, dan Status diperbarui.
+- **Notula Gelar Kasus Awal:** dibuat langsung sebagai .docx setelah hasil gelar disampaikan.
+- **Gmail:** mencari, membaca, membalas, mengirim, dan membuat draf email.
+- **Kalender:** melihat, membuat, dan menghapus acara.
+- **Tanya-jawab umum**, dengan pencarian web bila perlu.
 
-1. Pengguna mengirim PDF pengaduan ke bot Telegram.
-2. Agen membaca PDF, lalu:
-   - membuat folder `Nama Pengadu - Kota/Kabupaten` di folder **Otomasi**;
-   - menyimpan PDF dengan nama yang sama dengan foldernya;
-   - mencatat satu baris di **Database Raffy**, tab **Master Data** (kolom A–P, Status `Menunggu`).
-3. *(tahap berikutnya)* Draf Telaahan Staf dikirim ke Telegram dan direvisi lewat chat. Setelah disetujui, dibuat .docx, lalu disimpan ke Drive dan dikirim ke Telegram.
-4. *(tahap berikutnya)* Telaahan yang sudah ditandatangani dikirim sebagai balasan (*reply*) ke pesan kasusnya. Agen menyimpannya sebagai `Telaahan Staff_<nama folder>_ttd.pdf` di folder pengadu.
-5. *(tahap berikutnya)* Pengguna mengirim hasil gelar lewat chat. Agen langsung membuat .docx Notula Gelar Kasus Awal, lalu menyimpannya ke Drive dan mengirimnya ke Telegram.
+Setiap tindakan yang mengubah data atau mengirim sesuatu menunggu tombol **Setujui/Tolak**. Membalas dengan teks saat tombol muncul berarti menolak sambil memberi arahan.
 
-## Status tahapan
+## Status
 
-| Tahap | Isi | Status |
-|---|---|---|
-| 1 | Persiapan akun (Telegram, Google, Claude) | panduan tersedia |
-| 2 | Penerimaan PDF, folder, nama file, Master Data | selesai ditulis, belum diuji dengan akun asli |
-| 3 | Draf Telaahan, revisi via chat, .docx, TTD, Notula | belum |
-| 4 | Pemindahan ke VPS Hostinger | panduan tersedia (docs/VPS.md) |
+| Bagian | Status |
+|---|---|
+| Asisten percakapan, alat, persetujuan, riwayat | selesai ditulis dan lulus uji otomatis; belum diuji dengan akun asli |
+| Apps Script (Drive, Sheets, Gmail, Kalender) | selesai, versi 2 |
+| Dokumen Telaahan dan Notula (.docx) | selesai, tata letak sesuai docs/KEPUTUSAN.md |
+| Pemasangan VPS | satu perintah (docs/VPS.md) |
 
 ## Aturan yang dipegang
 
@@ -38,7 +39,7 @@ Penyiapan langkah demi langkah ada di [docs/PANDUAN.md](docs/PANDUAN.md).
 |---|---|
 | `npm install` | memasang paket |
 | `npm run setup` | penyiapan terpandu: token, Apps Script, kunci Claude, pemeriksaan |
-| `npm run cek` | memeriksa sambungan Telegram, Drive, Sheets, dan Claude |
+| `npm run cek` | memeriksa Telegram, Drive, Sheets, Apps Script, dan Claude (termasuk satu permintaan uji) |
 | `npm start` | menjalankan bot |
 | `npm test` | menjalankan pengujian otomatis |
 
@@ -48,11 +49,13 @@ Penyiapan langkah demi langkah ada di [docs/PANDUAN.md](docs/PANDUAN.md).
 src/
   index.js              titik awal program
   config.js             membaca .env
-  telegram/             bot dan teks pesan
-  ai/extract.js         membaca PDF dengan Claude (model claude-opus-5-5)
+  telegram/             bot Telegram, tombol persetujuan, format pesan
+  agent/                asisten: putaran Claude (agen.js), alat (alat.js), prompt dan pengetahuan,
+                        riwayat percakapan, berkas dari Telegram
+  docs/                 pembuat .docx Telaahan Staf dan Notula Gelar Kasus Awal
   google/               Drive dan Sheets: lewat Apps Script (bawaan) atau OAuth Client ID
-  pipeline/intake.js    alur penerimaan pengaduan
-  state/store.js        status kasus di data/kasus.json
+  pipeline/intake.js    pencatatan pengaduan (folder, PDF, Master Data)
+  state/store.js        catatan kasus di data/kasus.json
 apps-script/Kode.gs     skrip jembatan Drive & Sheets yang dipasang di akun Google pengguna
 scripts/                setup, cek-koneksi, authorize-google (hanya untuk cara OAuth)
 test/                   pengujian otomatis

@@ -2,6 +2,11 @@
 
 Catatan jawaban pengguna yang menjadi aturan tetap agen. Bila skill lama (telaahan-staf-sengketa, notula-gelar-kasus-awal, analis-pertanahan, alur-pengaduan-masuk) berbeda dengan catatan ini, yang berlaku catatan ini.
 
+## Bentuk asisten
+- Asisten pribadi yang diajak bicara lewat Telegram. Claude membaca setiap pesan dan memutuskan tindakan.
+- Cakupan: semua kebutuhan pengguna, yaitu pekerjaan pengaduan pertanahan, Gmail, Google Calendar, dan tanya-jawab umum (dengan pencarian web).
+- Sebelum mengubah data atau mengirim sesuatu (folder, berkas, Master Data, dokumen, email, acara), asisten **meminta persetujuan** lewat tombol Setujui/Tolak. Membaca data boleh langsung.
+
 ## Alur dan penyimpanan
 - Komunikasi lewat Telegram. Semua perubahan bisa dilakukan lewat chat.
 - Folder induk: **Otomasi**. Setiap pengaduan mendapat subfolder `Nama Pengadu - Kota/Kabupaten`, dibuat oleh agen.

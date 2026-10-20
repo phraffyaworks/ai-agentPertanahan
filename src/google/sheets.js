@@ -73,7 +73,17 @@ function createSheetsService(backend, { sheetMaster }) {
     return { rowNumber, masalah };
   }
 
-  return { checkHeader, readRows, appendMasterRow };
+  // Mengubah satu kolom (menurut judul header) pada satu baris data.
+  async function updateCell(rowNumber, kolom, nilai) {
+    const col = HEADER.indexOf(kolom);
+    if (col === -1) throw new Error(`Kolom "${kolom}" tidak ada di Master Data.`);
+    if (!Number.isInteger(rowNumber) || rowNumber < 2) throw new Error('Nomor baris harus 2 atau lebih.');
+    await backend.setValue(sheetMaster, rowNumber, col + 1, nilai);
+    const [baris = []] = await read(rowNumber, rowNumber);
+    return { rowNumber, kolom, tertulis: baris[col] ?? '' };
+  }
+
+  return { checkHeader, readRows, appendMasterRow, updateCell };
 }
 
 // Backend lewat Google Sheets API dengan login OAuth (Client ID).
@@ -99,6 +109,12 @@ function googleApiBackend(auth, spreadsheetId) {
       await api.spreadsheets.values.update({
         spreadsheetId, range: `${quoteSheet(sheet)}!${colLetter(col - 1)}${row}`,
         valueInputOption: 'USER_ENTERED', requestBody: { values: [[formula]] },
+      });
+    },
+    async setValue(sheet, row, col, value) {
+      await api.spreadsheets.values.update({
+        spreadsheetId, range: `${quoteSheet(sheet)}!${colLetter(col - 1)}${row}`,
+        valueInputOption: 'RAW', requestBody: { values: [[value]] },
       });
     },
   };

@@ -1,14 +1,15 @@
 /**
- * Jembatan Google Drive & Sheets untuk bot Agen Pengaduan Pertanahan.
+ * Jembatan Google Drive, Sheets, Gmail, dan Kalender untuk bot asisten pribadi.
  *
  * Skrip ini dijalankan atas nama pemilik akun (Execute as: Me), sehingga bot di VPS bisa
- * membuat folder, mengunggah PDF, dan mengisi Database Raffy tanpa Client ID Google.
+ * mengelola folder, Database Raffy, email, dan jadwal tanpa Client ID Google.
+ * Bot selalu meminta persetujuan pengguna di Telegram sebelum mengubah data.
  * Setiap permintaan wajib membawa kode rahasia yang dipasangkan sekali oleh `npm run setup`.
  *
  * Jangan ubah isi file ini. Cara memasang: docs/APPS-SCRIPT.md
  */
 
-var VERSI = '1';
+var VERSI = '2';
 var PROP_KODE = 'KODE_RAHASIA';
 
 // Dibuka lewat browser: hanya untuk memastikan Web App sudah aktif.
@@ -80,6 +81,22 @@ var AKSI_ = {
     return nama;
   },
 
+  driveListChildren: function (p) {
+    var folder = DriveApp.getFolderById(p.folderId);
+    var isi = [];
+    [folder.getFolders(), folder.getFiles()].forEach(function (it, i) {
+      while (it.hasNext()) {
+        var x = it.next();
+        if (x.isTrashed()) continue;
+        var info = infoBerkas_(x);
+        info.jenis = i === 0 ? 'folder' : x.getMimeType();
+        info.diubah = x.getLastUpdated().toISOString();
+        isi.push(info);
+      }
+    });
+    return isi;
+  },
+
   driveUpload: function (p) {
     var blob = Utilities.newBlob(Utilities.base64Decode(p.base64), p.mimeType, p.name);
     return infoBerkas_(DriveApp.getFolderById(p.folderId).createFile(blob));
@@ -113,12 +130,97 @@ var AKSI_ = {
     }
   },
 
+  // Mengisi satu sel dengan teks apa adanya (awalan petik: tidak dibaca sebagai tanggal/rumus).
+  sheetSetValue: function (p) {
+    var v = typeof p.value === 'string' && p.value !== '' ? "'" + p.value : p.value;
+    lembar_(p).getRange(p.row, p.col).setValue(v);
+    SpreadsheetApp.flush();
+    return true;
+  },
+
   sheetSetFormula: function (p) {
     lembar_(p).getRange(p.row, p.col).setFormula(p.formula);
     SpreadsheetApp.flush();
     return true;
   },
+
+  // ---- Gmail ----
+  gmailSearch: function (p) {
+    return GmailApp.search(p.query || 'in:inbox', 0, Math.min(p.max || 10, 30)).map(function (t) {
+      var msgs = t.getMessages();
+      var last = msgs[msgs.length - 1];
+      return {
+        thread_id: t.getId(), subjek: t.getFirstMessageSubject(), dari: last.getFrom(),
+        tanggal: last.getDate().toISOString(), jumlah_pesan: msgs.length, belum_dibaca: t.isUnread(),
+        cuplikan: last.getPlainBody().replace(/\s+/g, ' ').slice(0, 200),
+      };
+    });
+  },
+
+  gmailRead: function (p) {
+    var t = GmailApp.getThreadById(p.threadId);
+    if (!t) throw new Error('Email tidak ditemukan.');
+    return t.getMessages().map(function (m) {
+      return {
+        dari: m.getFrom(), kepada: m.getTo(), cc: m.getCc(), tanggal: m.getDate().toISOString(),
+        subjek: m.getSubject(), isi: m.getPlainBody().slice(0, 12000),
+        lampiran: m.getAttachments().map(function (a) { return a.getName(); }),
+      };
+    });
+  },
+
+  gmailSend: function (p) {
+    GmailApp.sendEmail(p.to, p.subject, p.body, opsiEmail_(p));
+    return true;
+  },
+
+  gmailDraft: function (p) {
+    var d = GmailApp.createDraft(p.to, p.subject, p.body, opsiEmail_(p));
+    return { draft_id: d.getId() };
+  },
+
+  gmailReply: function (p) {
+    var t = GmailApp.getThreadById(p.threadId);
+    if (!t) throw new Error('Email tidak ditemukan.');
+    t.reply(p.body, opsiEmail_(p));
+    return true;
+  },
+
+  // ---- Kalender (kalender utama akun) ----
+  calList: function (p) {
+    return CalendarApp.getDefaultCalendar().getEvents(new Date(p.start), new Date(p.end)).map(function (e) {
+      return {
+        event_id: e.getId(), judul: e.getTitle(), mulai: e.getStartTime().toISOString(),
+        selesai: e.getEndTime().toISOString(), sepanjang_hari: e.isAllDayEvent(),
+        lokasi: e.getLocation(), keterangan: e.getDescription().slice(0, 2000),
+      };
+    });
+  },
+
+  calCreate: function (p) {
+    var opsi = { location: p.location || '', description: p.description || '' };
+    if (p.guests) { opsi.guests = p.guests; opsi.sendInvites = true; }
+    var e = CalendarApp.getDefaultCalendar().createEvent(p.title, new Date(p.start), new Date(p.end), opsi);
+    return { event_id: e.getId() };
+  },
+
+  calDelete: function (p) {
+    var e = CalendarApp.getDefaultCalendar().getEventById(p.eventId);
+    if (!e) throw new Error('Acara tidak ditemukan.');
+    e.deleteEvent();
+    return true;
+  },
 };
+
+function opsiEmail_(p) {
+  var o = {};
+  if (p.cc) o.cc = p.cc;
+  if (p.bcc) o.bcc = p.bcc;
+  if (p.attachmentIds && p.attachmentIds.length) {
+    o.attachments = p.attachmentIds.map(function (id) { return DriveApp.getFileById(id).getBlob(); });
+  }
+  return o;
+}
 
 function infoBerkas_(f) {
   return { id: f.getId(), name: f.getName(), webViewLink: f.getUrl(), trashed: f.isTrashed() };
@@ -137,8 +239,9 @@ function resetKodeRahasia() {
 }
 
 // Jalankan dari editor untuk memunculkan jendela izin sebelum Deploy. Google meminta izin untuk
-// semua layanan yang dipakai skrip ini (Drive dan Sheets) sekaligus.
+// semua layanan yang dipakai skrip ini (Drive, Sheets, Gmail, Kalender) sekaligus.
 function izinkanAkses() {
   Logger.log('Izin sudah diberikan untuk akun ' + Session.getEffectiveUser().getEmail() + '. Lanjutkan ke Deploy.');
-  Logger.log('Folder utama Drive: ' + DriveApp.getRootFolder().getName());
+  Logger.log('Drive: ' + DriveApp.getRootFolder().getName() + '; Gmail: ' + GmailApp.getInboxUnreadCount()
+    + ' email belum dibaca; Kalender: ' + CalendarApp.getDefaultCalendar().getName());
 }

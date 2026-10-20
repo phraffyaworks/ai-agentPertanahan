@@ -6,7 +6,7 @@ const { spawnSync } = require('child_process');
 const Anthropic = require('@anthropic-ai/sdk').default;
 const { Bot } = require('grammy');
 const { readEnv, setEnvValues } = require('../src/util/envfile');
-const { newSecret, createAppsScriptClient } = require('../src/google/appsscript');
+const { VERSI_APPS_SCRIPT, newSecret, createAppsScriptClient } = require('../src/google/appsscript');
 const { loadConfig } = require('../src/config');
 
 const ROOT = path.join(__dirname, '..');
@@ -92,21 +92,24 @@ async function main() {
     env.APPS_SCRIPT_SECRET = newSecret();
     setEnvValues(ENV_FILE, { APPS_SCRIPT_SECRET: env.APPS_SCRIPT_SECRET }, path.join(ROOT, '.env.example'));
   }
-  const { google } = loadConfig([]);
+  const { google, claude } = loadConfig([]);
   await tanya('APPS_SCRIPT_URL', 'Tempel alamat Web App Apps Script (diawali https://script.google.com/macros/s/ dan diakhiri /exec)', async url => {
     if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)) {
       throw new Error('bentuknya bukan alamat Web App. Salin "Web app URL" yang diakhiri /exec.');
     }
     const client = createAppsScriptClient({ url, secret: env.APPS_SCRIPT_SECRET });
     await client.call('pasang', { secret: env.APPS_SCRIPT_SECRET });
-    const { akun } = await client.call('ping');
+    const { akun, versi } = await client.call('ping');
+    if (Number(versi) < VERSI_APPS_SCRIPT) {
+      throw new Error(`skrip Apps Script masih versi ${versi}. Tempel ulang Kode.gs terbaru dan buat versi deployment baru (docs/APPS-SCRIPT.md).`);
+    }
     const folder = await client.call('driveGetFolder', { id: google.folderIndukId });
     return `terhubung sebagai ${akun}; folder induk "${folder.name}" bisa dibuka`;
   });
 
   console.log('Langkah C: Claude');
   await tanya('ANTHROPIC_API_KEY', 'Tempel kunci Claude API (diawali sk-ant-)', async k => {
-    const m = await new Anthropic({ apiKey: k }).models.retrieve('claude-opus-5-5');
+    const m = await new Anthropic({ apiKey: k }).models.retrieve(claude.model);
     return `model ${m.id} tersedia`;
   });
 

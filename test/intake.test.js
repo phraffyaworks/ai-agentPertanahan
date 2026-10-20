@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { processPengaduan, normalizeDates, IntakeStop } = require('../src/pipeline/intake');
+const { catatPengaduan, normalizeDates, IntakeStop } = require('../src/pipeline/intake');
 const { buildMasterRow, nextNumber, findDuplicate, hyperlinkFormula, HEADER } = require('../src/google/sheets');
 const { createStore } = require('../src/state/store');
 
@@ -13,17 +13,16 @@ const contoh = () => ({
   pengadu_prinsipal: 'PT Razio Setia Mukti', penerima_kuasa: '', perihal: 'Permohonan perlindungan hukum',
   pokok_permasalahan: 'Pengadu memohon perlindungan hukum atas SHM No. 1467 Desa Sukamekar.', teradu: '-',
   objek_permasalahan: 'SHM No. 1467, Desa Sukamekar, Kecamatan Tambelang, Kabupaten Bekasi, Provinsi Jawa Barat',
-  kota_kabupaten_objek: 'Kabupaten Bekasi', rencana_tl: 'Untuk Sukel ke Kantah', perlu_cek: [],
+  kota_kabupaten_objek: 'Kabupaten Bekasi', perlu_cek: [],
 });
 
-function fakes({ rows = [], headerOk = true, data = contoh() } = {}) {
+function fakes({ rows = [], headerOk = true } = {}) {
   const log = [];
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agen-'));
   return {
     log,
     deps: {
       folderIndukId: 'INDUK',
-      extract: async () => ({ data, usage: {} }),
       sheets: {
         checkHeader: async () => (headerOk ? { ok: true, beda: [] } : { ok: false, beda: [{ kolom: 'B', harap: 'Nomor Agenda', ada: 'X' }] }),
         readRows: async () => rows,
@@ -41,7 +40,7 @@ function fakes({ rows = [], headerOk = true, data = contoh() } = {}) {
 
 test('alur lengkap: folder, PDF berganti nama, satu baris Master Data', async () => {
   const { deps, log } = fakes({ rows: [['1', 'x', '', '', '', '', '-']] });
-  const r = await processPengaduan({ pdfBuffer: Buffer.from('%PDF'), namaFileAsli: 'Document_261019.pdf' }, deps);
+  const r = await catatPengaduan({ pdfBuffer: Buffer.from('%PDF'), namaFileAsli: 'Document_261019.pdf', data: contoh() }, deps);
   assert.strictEqual(r.status, 'ok');
   assert.deepStrictEqual(log[0], ['folder', 'INDUK', 'PT Razio Setia Mukti - Kabupaten Bekasi']);
   // Nama sudah dipakai di folder itu -> diberi nomor.
@@ -49,6 +48,7 @@ test('alur lengkap: folder, PDF berganti nama, satu baris Master Data', async ()
   const [, row, url] = log[2];
   assert.strictEqual(row.length, HEADER.length);
   assert.strictEqual(row[0], 2);
+  assert.strictEqual(row[14], '', 'Rencana TL dikosongkan');
   assert.strictEqual(row[15], 'Menunggu');
   assert.strictEqual(url, 'https://drive/P1');
   assert.strictEqual(r.kasus.master.rowNumber, 3);
@@ -57,15 +57,15 @@ test('alur lengkap: folder, PDF berganti nama, satu baris Master Data', async ()
 
 test('Nomor Surat yang sudah ada: tidak membuat apa pun', async () => {
   const { deps, log } = fakes({ rows: [['1', '', '', '', '', '', '058/cl-lgl/iv/2026']] });
-  const r = await processPengaduan({ pdfBuffer: Buffer.from('%PDF') }, deps);
+  const r = await catatPengaduan({ pdfBuffer: Buffer.from('%PDF'), data: contoh() }, deps);
   assert.strictEqual(r.status, 'duplikat');
   assert.strictEqual(r.dupRow, 2);
   assert.strictEqual(log.length, 0);
 });
 
-test('header berbeda: berhenti sebelum membaca PDF', async () => {
+test('header berbeda: berhenti sebelum menulis apa pun', async () => {
   const { deps, log } = fakes({ headerOk: false });
-  await assert.rejects(processPengaduan({ pdfBuffer: Buffer.from('%PDF') }, deps), IntakeStop);
+  await assert.rejects(catatPengaduan({ pdfBuffer: Buffer.from('%PDF'), data: contoh() }, deps), IntakeStop);
   assert.strictEqual(log.length, 0);
 });
 

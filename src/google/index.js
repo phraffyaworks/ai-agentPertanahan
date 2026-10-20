@@ -2,7 +2,13 @@
 const { createAuthorizedClient } = require('./auth');
 const { createDrive } = require('./drive');
 const { createSheets, createSheetsService } = require('./sheets');
-const { createAppsScriptClient, createDriveViaAppsScript, appsScriptSheetsBackend } = require('./appsscript');
+const {
+  createAppsScriptClient, createDriveViaAppsScript, appsScriptSheetsBackend,
+  createGmailViaAppsScript, createCalendarViaAppsScript,
+} = require('./appsscript');
+
+// Gmail dan Kalender hanya tersedia lewat Apps Script.
+const tidakTersedia = nama => new Proxy({}, { get: () => async () => { throw new Error(`${nama} hanya tersedia bila akses Google lewat Apps Script.`); } });
 
 function createGoogle(google) {
   if (google.appsScriptUrl) {
@@ -12,10 +18,15 @@ function createGoogle(google) {
       client,
       drive: createDriveViaAppsScript(client),
       sheets: createSheetsService(appsScriptSheetsBackend(client, google.spreadsheetId), google),
+      gmail: createGmailViaAppsScript(client),
+      calendar: createCalendarViaAppsScript(client),
     };
   }
   const auth = createAuthorizedClient(google);
-  return { mode: 'OAuth', drive: createDrive(auth), sheets: createSheets(auth, google) };
+  return {
+    mode: 'OAuth', drive: createDrive(auth), sheets: createSheets(auth, google),
+    gmail: tidakTersedia('Gmail'), calendar: tidakTersedia('Kalender'),
+  };
 }
 
 module.exports = { createGoogle };

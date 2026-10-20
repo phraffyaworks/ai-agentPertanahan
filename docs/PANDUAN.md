@@ -7,7 +7,7 @@ Yang akan Anda siapkan:
 | No | Bahan | Dipakai untuk |
 |---|---|---|
 | 1 | Token bot Telegram | menerima PDF dan membalas di Telegram |
-| 2 | Web app URL Apps Script | membuka folder Otomasi dan Database Raffy |
+| 2 | Web app URL Apps Script | Drive, Database Raffy, Gmail, Kalender |
 | 3 | Kunci Claude API | membaca isi PDF pengaduan |
 | 4 | Node.js versi 22 | menjalankan program |
 

@@ -1,6 +1,6 @@
-# Memasang Apps Script (akses Google Drive & Sheets)
+# Memasang Apps Script (akses Google Drive, Sheets, Gmail, Kalender)
 
-Bot memakai Apps Script milik Anda untuk membuat folder, menyimpan PDF, dan mengisi Database Raffy. Cara ini tidak memerlukan Google Cloud atau Client ID, dan izinnya tidak kedaluwarsa.
+Asisten memakai Apps Script milik Anda untuk mengelola folder dan berkas di Drive, Database Raffy, email Gmail, dan Google Calendar. Cara ini tidak memerlukan Google Cloud atau Client ID, dan izinnya tidak kedaluwarsa. Asisten selalu meminta persetujuan Anda lewat tombol di Telegram sebelum mengubah data atau mengirim email.
 
 Kerjakan **sekali saja**, di browser laptop, dengan akun **phraffyaworks@gmail.com**. Kira-kira 10 menit.
 
@@ -23,7 +23,7 @@ Hasil akhirnya satu alamat **Web app URL** (diakhiri `/exec`). Alamat itu nanti 
 3. Kembali ke editor Apps Script. Klik di dalam isi **Code.gs**, tekan **Ctrl+A**, lalu **Delete**, sampai kosong.
 4. Tekan **Ctrl+V** untuk menempel.
 5. Tekan **Ctrl+S** atau klik ikon disket (**Save project**).
-6. ✅ Baris pertama isinya `/**` dan baris berikutnya `* Jembatan Google Drive & Sheets ...`.
+6. ✅ Baris pertama isinya `/**` dan baris berikutnya `* Jembatan Google Drive, Sheets, Gmail, dan Kalender ...`.
 
 ## Langkah 4. Beri izin
 1. Di bilah atas editor, ada kotak pilihan fungsi (di sebelah tombol **Debug**). Pilih **izinkanAkses**.
@@ -31,7 +31,7 @@ Hasil akhirnya satu alamat **Web app URL** (diakhiri `/exec`). Alamat itu nanti 
 3. Muncul jendela **Authorization required**. Klik **Review permissions**.
 4. Pilih akun **phraffyaworks@gmail.com**.
 5. Muncul **"Google hasn't verified this app"**. Klik **Advanced**, lalu **Go to masAI Pertanahan (unsafe)**.
-6. Di halaman izin, **centang semua kotak** (atau **Select all**), lalu klik **Continue**.
+6. Di halaman izin, **centang semua kotak** (atau **Select all**): Google Drive, Google Sheets, Gmail, dan Google Calendar. Lalu klik **Continue**.
 7. ✅ Di bagian **Execution log** di bawah, muncul `Izin sudah diberikan untuk akun phraffyaworks@gmail.com`.
 
 Bila yang muncul justru **"Access blocked"**, berhenti di sini dan kirim tangkapan layarnya ke saya.
@@ -49,16 +49,27 @@ Bila yang muncul justru **"Access blocked"**, berhenti di sini dan kirim tangkap
 
 ## Langkah 6. Cek
 1. Buka **Web app URL** tadi di tab baru.
-2. ✅ Tampil tulisan `Web App Agen Pertanahan aktif (versi 1).`
+2. ✅ Tampil tulisan `Web App Agen Pertanahan aktif (versi 2).`
 
 Selesai. Alamat ini ditempel di VPS saat program menanyakan **"Tempel alamat Web App Apps Script"** (lihat docs/VPS.md).
 
 ---
 
+## Memperbarui skrip yang sudah terpasang
+
+Kerjakan bagian ini bila Anda sudah pernah memasang skrip versi lama. Alamat Web App tidak berubah.
+
+1. Di jendela **Incognito**, buka https://script.google.com, login dengan phraffyaworks@gmail.com, lalu buka proyek **masAI Pertanahan**.
+2. Ulangi **Langkah 3**: salin skrip terbaru, ganti seluruh isi Code.gs, lalu simpan.
+3. Ulangi **Langkah 4**: jalankan **izinkanAkses**, lalu centang semua izin, termasuk Gmail dan Kalender yang baru.
+4. Klik **Deploy → Manage deployments**, lalu klik ikon pensil (Edit).
+5. Atur **Who has access** ke **Anyone**. Pada **Version**, pilih **New version**, lalu klik **Deploy**.
+6. Ulangi **Langkah 6**. ✅ Harus tampil `(versi 2)` tanpa diminta login.
+
 ## Catatan
 
 - **"Who has access: Anyone"** artinya alamat itu bisa dihubungi dari VPS tanpa login Google. Isinya tetap aman: setiap permintaan wajib membawa kode rahasia yang dibuat dan dipasangkan otomatis oleh `npm run setup`. Permintaan tanpa kode itu ditolak.
 - Jangan membagikan **Web app URL** ke orang lain.
-- **Bila skrip diperbarui** (saya akan memberi tahu), tempel skrip baru di Code.gs dan simpan. Lalu buka **Deploy → Manage deployments**, klik ikon pensil, pilih **Version: New version**, dan klik **Deploy**. Alamatnya tetap sama.
+- Jangan sampai ada jendela browser yang login ke beberapa akun Google sekaligus. Kerjakan semua langkah di jendela **Incognito** yang hanya login dengan phraffyaworks@gmail.com.
 - **Memasangkan ulang** (misalnya VPS diganti): di editor, pilih fungsi **resetKodeRahasia**, klik **Run**, lalu jalankan `npm run setup` di VPS.
 - Project Google Cloud ("masAI Pertanahan" maupun "phraff-aiotomation") tidak dipakai lagi. Boleh dibiarkan.

@@ -6,7 +6,7 @@ const path = require('path');
 function createStore(dataDir) {
   const file = path.join(dataDir, 'kasus.json');
   fs.mkdirSync(dataDir, { recursive: true });
-  let state = { cases: {}, pesan: {} };
+  let state = { cases: {} };
   if (fs.existsSync(file)) state = JSON.parse(fs.readFileSync(file, 'utf8'));
 
   function save() {
@@ -31,15 +31,7 @@ function createStore(dataDir) {
 
   const getCase = id => state.cases[id] || null;
 
-  // Menghubungkan pesan bot di Telegram dengan kasusnya, supaya balasan (reply) ke pesan itu
-  // bisa dikenali sebagai milik kasus tersebut.
-  function linkMessage(chatId, messageId, caseId) {
-    state.pesan[`${chatId}:${messageId}`] = caseId;
-    save();
-  }
-  const caseForMessage = (chatId, messageId) => getCase(state.pesan[`${chatId}:${messageId}`]);
-
-  return { newCaseId, putCase, getCase, linkMessage, caseForMessage };
+  return { newCaseId, putCase, getCase };
 }
 
 module.exports = { createStore };

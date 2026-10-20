@@ -45,6 +45,14 @@ function createDrive(auth) {
     return files.map(f => f.name);
   }
 
+  async function listChildren(folderId) {
+    const files = await list(`${q(folderId)} in parents and trashed = false`, 'files(id, name, mimeType, webViewLink, modifiedTime)');
+    return files.map(f => ({
+      id: f.id, name: f.name, webViewLink: f.webViewLink, diubah: f.modifiedTime,
+      jenis: f.mimeType === FOLDER_MIME ? 'folder' : f.mimeType,
+    }));
+  }
+
   async function uploadFile(folderId, name, buffer, mimeType) {
     const res = await api.files.create({
       requestBody: { name, parents: [folderId] },
@@ -54,7 +62,7 @@ function createDrive(auth) {
     return res.data;
   }
 
-  return { getFolder, findFolder, findOrCreateFolder, listNames, uploadFile };
+  return { getFolder, findFolder, findOrCreateFolder, listNames, listChildren, uploadFile };
 }
 
 module.exports = { createDrive };

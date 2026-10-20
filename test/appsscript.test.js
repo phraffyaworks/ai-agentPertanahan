@@ -9,7 +9,7 @@ const http = require('http');
 const vm = require('vm');
 const { createGoogle } = require('../src/google');
 const { newSecret } = require('../src/google/appsscript');
-const { processPengaduan } = require('../src/pipeline/intake');
+const { catatPengaduan } = require('../src/pipeline/intake');
 const { createStore } = require('../src/state/store');
 const { HEADER } = require('../src/google/sheets');
 
@@ -26,6 +26,7 @@ function fakeGoogle() {
   };
   const api = it => ({
     getId: () => it.id, getName: () => it.name, getUrl: () => `https://drive.google.com/${it.id}`, isTrashed: () => it.trashed,
+    getMimeType: () => 'application/pdf', getLastUpdated: () => new Date('2026-10-20T00:00:00Z'),
     getFoldersByName: n => iter([...items.values()].filter(x => x.parent === it.id && x.isFolder && x.name === n).map(api)),
     getFolders: () => iter([...items.values()].filter(x => x.parent === it.id && x.isFolder).map(api)),
     getFiles: () => iter([...items.values()].filter(x => x.parent === it.id && !x.isFolder).map(api)),
@@ -56,9 +57,12 @@ function fakeGoogle() {
         cells[r - 1][c - 1] = { v: m ? m[2] : '#ERROR!', f };
       },
       copyFormatToRange: () => {},
+      setValue(v) { this.setValues([[v]]); },
     }),
   };
   const props = {};
+  const surat = [];
+  const acara = [];
   const ctx = {
     PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = v; }, deleteProperty: k => { delete props[k]; } }) },
     ContentService: { createTextOutput: text => ({ text, setMimeType() { return this; } }), MimeType: { JSON: 'json' } },
@@ -67,11 +71,16 @@ function fakeGoogle() {
     Utilities: { newBlob: (bytes, mime, name) => ({ bytes, mime, name }), base64Decode: s => Buffer.from(s, 'base64') },
     SpreadsheetApp: { openById: () => ({ getSheetByName: n => (n === 'Master Data' ? sheet : null) }), flush: () => {} },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
+    GmailApp: {
+      search: () => [], getThreadById: () => null,
+      sendEmail: (...a) => { surat.push(a); }, createDraft: () => ({ getId: () => 'D1' }),
+    },
+    CalendarApp: { getDefaultCalendar: () => ({ getEvents: () => [], createEvent: (t, s, e, o) => { acara.push([t, s, e, o]); return { getId: () => 'E1' }; }, getEventById: () => null }) },
     Logger: { log() {} },
   };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'Kode.gs'), 'utf8'), ctx);
-  return { ctx, items, cells, otomasiId: otomasi.getId() };
+  return { ctx, items, cells, surat, acara, otomasiId: otomasi.getId() };
 }
 
 // Server tiruan: seperti Apps Script, POST dijawab dengan pengalihan 302 ke alamat hasil.
@@ -127,13 +136,12 @@ test('Apps Script: alur penerimaan lengkap ke Drive dan Master Data', async () =
     await google.client.call('pasang', { secret });
     const deps = {
       drive: google.drive, sheets: google.sheets, folderIndukId: g.otomasiId,
-      extract: async () => ({ data: { ...dataContoh }, usage: {} }),
-      store: createStore(fs.mkdtempSync(path.join(os.tmpdir(), 'agen-'))),
+            store: createStore(fs.mkdtempSync(path.join(os.tmpdir(), 'agen-'))),
     };
     assert.deepStrictEqual(await google.sheets.checkHeader(), { ok: true, beda: [] });
 
     const pdf = Buffer.from('%PDF-1.4 contoh');
-    const r = await processPengaduan({ pdfBuffer: pdf, namaFileAsli: 'Document_1.pdf' }, deps);
+    const r = await catatPengaduan({ pdfBuffer: pdf, namaFileAsli: 'Document_1.pdf', data: { ...dataContoh } }, deps);
     assert.strictEqual(r.status, 'ok');
     assert.deepStrictEqual(r.masalahSheet, []);
 
@@ -154,8 +162,36 @@ test('Apps Script: alur penerimaan lengkap ke Drive dan Master Data', async () =
 
     // Pengaduan dengan Nomor Surat sama tidak membuat apa pun.
     const jumlah = g.items.size;
-    const dup = await processPengaduan({ pdfBuffer: pdf, namaFileAsli: 'Document_1.pdf' }, deps);
+    const dup = await catatPengaduan({ pdfBuffer: pdf, namaFileAsli: 'Document_1.pdf', data: { ...dataContoh } }, deps);
     assert.strictEqual(dup.status, 'duplikat');
     assert.strictEqual(g.items.size, jumlah);
+  } finally { server.close(); }
+});
+
+test('Apps Script: ubah sel, daftar folder, Gmail, dan Kalender', async () => {
+  const g = fakeGoogle();
+  const { server, url } = await serve(g.ctx);
+  try {
+    const secret = newSecret();
+    const google = createGoogle({ appsScriptUrl: url, appsScriptSecret: secret, spreadsheetId: 'S', sheetMaster: 'Master Data' });
+    await google.client.call('pasang', { secret });
+
+    const r = await google.sheets.updateCell(2, 'Rencana TL', '01/02/2026 Gelar Awal');
+    assert.strictEqual(r.tertulis, '01/02/2026 Gelar Awal', 'teks tidak berubah jadi tanggal');
+    await assert.rejects(google.sheets.updateCell(2, 'Tidak Ada', 'x'), /tidak ada di Master Data/);
+
+    await google.drive.findOrCreateFolder(g.otomasiId, 'PT A - Kota B');
+    const isi = await google.drive.listChildren(g.otomasiId);
+    assert.deepStrictEqual(isi.map(x => [x.name, x.jenis]), [['PT A - Kota B', 'folder']]);
+
+    await google.gmail.send({ to: 'a@b.c', subject: 'S', body: 'Isi' });
+    assert.deepStrictEqual(g.surat[0].slice(0, 3), ['a@b.c', 'S', 'Isi']);
+    assert.deepStrictEqual(await google.gmail.search('is:unread', 5), []);
+    await assert.rejects(google.gmail.read('X'), /Email tidak ditemukan/);
+
+    const ev = await google.calendar.create({ title: 'Rapat', start: '2026-10-21T09:00:00+07:00', end: '2026-10-21T10:00:00+07:00' });
+    assert.strictEqual(ev.event_id, 'E1');
+    assert.strictEqual(g.acara[0][0], 'Rapat');
+    await assert.rejects(google.calendar.remove('X'), /Acara tidak ditemukan/);
   } finally { server.close(); }
 });
