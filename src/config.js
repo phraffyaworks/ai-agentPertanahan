@@ -15,9 +15,11 @@ const DEFAULTS = {
 const GROUPS = {
   // TELEGRAM_ALLOWED_USER_IDS boleh kosong saat penyiapan pertama: bot hanya melayani /id.
   telegram: ['TELEGRAM_BOT_TOKEN'],
-  // Akses Google lewat Apps Script (disarankan) atau, bila APPS_SCRIPT_URL kosong, lewat OAuth Client ID.
-  google: () => (get('APPS_SCRIPT_URL') ? ['APPS_SCRIPT_URL', 'APPS_SCRIPT_SECRET']
-    : ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN']),
+  // Akses Google lewat Apps Script (bawaan). OAuth Client ID hanya dipakai bila APPS_SCRIPT_URL kosong
+  // dan GOOGLE_CLIENT_ID diisi.
+  google: () => (!get('APPS_SCRIPT_URL') && get('GOOGLE_CLIENT_ID')
+    ? ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN']
+    : ['APPS_SCRIPT_URL', 'APPS_SCRIPT_SECRET']),
   googleClient: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
   claude: ['ANTHROPIC_API_KEY'],
 };
@@ -31,7 +33,7 @@ function get(name) {
 function loadConfig(groups = ['telegram', 'google', 'claude']) {
   const missing = groups.flatMap(g => (typeof GROUPS[g] === 'function' ? GROUPS[g]() : GROUPS[g])).filter(n => !get(n));
   if (missing.length) {
-    throw new Error(`Pengaturan belum diisi di file .env: ${[...new Set(missing)].join(', ')}. Lihat docs/PANDUAN.md.`);
+    throw new Error(`Pengaturan belum diisi di file .env: ${[...new Set(missing)].join(', ')}. Jalankan penyiapan: su - agen -c "cd ai-agentPertanahan && npm run setup"`);
   }
   const allowed = (get('TELEGRAM_ALLOWED_USER_IDS') || '')
     .split(',').map(s => s.trim()).filter(Boolean).map(Number);
