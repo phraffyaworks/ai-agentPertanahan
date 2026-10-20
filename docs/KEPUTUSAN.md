@@ -35,5 +35,6 @@ Catatan jawaban pengguna yang menjadi aturan tetap agen. Bila skill lama (telaah
 - Judul disusun dengan pola "Permasalahan … atas Tanah Seluas … antara … dan … Terletak di …" (seperti contoh Notula Cikarang), bukan disalin dari judul Telaahan.
 
 ## Lingkungan
+- Akses Google Drive & Sheets lewat Apps Script milik pengguna (docs/APPS-SCRIPT.md), karena tombol Publish app di Google Cloud tidak bisa dipakai dan status Testing membuat izin habis setiap 7 hari.
 - Uji coba di komputer Windows maupun Linux.
 - Server: VPS Hostinger KVM 2 (2 CPU, 8 GB RAM, 100 GB), Ubuntu 26.04 LTS, lokasi Kuala Lumpur, diakses lewat terminal di hPanel.

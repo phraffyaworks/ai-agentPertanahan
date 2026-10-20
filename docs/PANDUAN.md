@@ -7,7 +7,7 @@ Yang akan Anda siapkan:
 | No | Bahan | Dipakai untuk |
 |---|---|---|
 | 1 | Token bot Telegram | menerima PDF dan membalas di Telegram |
-| 2 | Client ID dan Client secret Google | membuka folder Otomasi dan Database Raffy |
+| 2 | Web app URL Apps Script | membuka folder Otomasi dan Database Raffy |
 | 3 | Kunci Claude API | membaca isi PDF pengaduan |
 | 4 | Node.js versi 22 | menjalankan program |
 
@@ -23,39 +23,11 @@ Simpan sementara nilai-nilai itu di catatan pribadi. Nilainya nanti ditempel lan
 4. Isi username bot. Harus diakhiri `bot`, misalnya `raffy_pengaduan_bot`.
 5. BotFather mengirim token, bentuknya seperti `123456789:AAH...`. Simpan token ini; jangan dibagikan.
 
-## Langkah 2 — Akses Google Drive dan Sheets (Client ID dan Client secret)
+## Langkah 2 — Akses Google Drive dan Sheets (Apps Script)
 
-Kerjakan di browser laptop dengan akun **phraffyaworks@gmail.com** (pemilik folder Otomasi). Gratis, tidak perlu kartu kredit.
+Ikuti [docs/APPS-SCRIPT.md](APPS-SCRIPT.md), kira-kira 10 menit. Hasilnya satu alamat **Web app URL** yang diakhiri `/exec`. Simpan alamat itu di catatan pribadi.
 
-**A. Buat project**
-1. Buka https://console.cloud.google.com/projectcreate
-2. Isi *Project name*, misalnya `Agen Pertanahan`, lalu tekan **Create**.
-3. Pastikan nama project itu tampil di bagian atas halaman. Bila belum, pilih project itu di sana sebelum lanjut ke langkah berikutnya.
-
-**B. Aktifkan dua API**
-1. Buka https://console.cloud.google.com/apis/library/drive.googleapis.com lalu tekan **Enable**.
-2. Buka https://console.cloud.google.com/apis/library/sheets.googleapis.com lalu tekan **Enable**.
-
-**C. Isi identitas aplikasi**
-1. Buka https://console.cloud.google.com/auth/overview lalu tekan **Get started**.
-2. Isi formulirnya:
-   - *App name*: `Agen Pertanahan`
-   - *User support email*: email Anda
-   - *Audience*: **External**
-   - *Contact information*: email Anda
-3. Centang persetujuan, lalu tekan **Create**.
-
-**D. Terbitkan aplikasi (wajib)**
-1. Buka https://console.cloud.google.com/auth/audience
-2. Tekan **Publish app**, lalu **Confirm**. Status harus menjadi **In production**.
-
-Bila statusnya masih *Testing*, izin Google kedaluwarsa setelah 7 hari dan bot berhenti bisa membuka Drive. Aplikasi tidak perlu diverifikasi Google karena hanya Anda yang memakainya.
-
-**E. Buat Client ID**
-1. Buka https://console.cloud.google.com/auth/clients lalu tekan **Create client**.
-2. *Application type*: **Desktop app**. *Name*: `Bot VPS`. Tekan **Create**.
-3. Jendela yang muncul menampilkan **Client ID** (diakhiri `.apps.googleusercontent.com`) dan **Client secret** (diawali `GOCSPX-`).
-4. Salin keduanya ke catatan pribadi, atau tekan **Download JSON**. Client secret bisa jadi hanya ditampilkan sekali. Bila terlewat, buat client baru.
+Google Cloud dan Client ID tidak diperlukan.
 
 ## Langkah 3 — Kunci Claude API
 
@@ -88,7 +60,8 @@ Hanya bila ingin mencoba di komputer sebelum di VPS. Jangan jalankan bot di komp
 | Pesan | Penyebab dan solusi |
 |---|---|
 | `Pengaturan belum diisi di file .env: ...` | Nilai yang disebut belum diisi di `.env`. |
-| `invalid_grant` pada Google | Izin Google kedaluwarsa atau dicabut. Pastikan status aplikasi **In production** (Langkah 2D), lalu jalankan `npm run setup` lagi dan pilih ulangi izin Google. |
+| `Apps Script: Kode rahasia salah` atau `sudah dipasangkan dengan kode lain` | Jalankan fungsi **resetKodeRahasia** di editor Apps Script, lalu `npm run setup` lagi. |
+| `Apps Script tidak menjawab dengan benar` | Web app URL salah, atau **Who has access** bukan **Anyone**. Periksa Langkah 5 di docs/APPS-SCRIPT.md. |
 | `Kunci Claude API ditolak` | `ANTHROPIC_API_KEY` salah atau sudah dihapus. |
 | `File lebih dari 20 MB` | Batas unduhan bot Telegram. Kecilkan ukuran PDF lalu kirim ulang. |
 | `Header tab Master Data berbeda` | Judul kolom A–P di Database Raffy berubah. Kembalikan judulnya, atau minta penyesuaian program. |

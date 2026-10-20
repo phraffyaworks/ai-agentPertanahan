@@ -14,7 +14,9 @@ const DEFAULTS = {
 const GROUPS = {
   // TELEGRAM_ALLOWED_USER_IDS boleh kosong saat penyiapan pertama: bot hanya melayani /id.
   telegram: ['TELEGRAM_BOT_TOKEN'],
-  google: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN'],
+  // Akses Google lewat Apps Script (disarankan) atau, bila APPS_SCRIPT_URL kosong, lewat OAuth Client ID.
+  google: () => (get('APPS_SCRIPT_URL') ? ['APPS_SCRIPT_URL', 'APPS_SCRIPT_SECRET']
+    : ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN']),
   googleClient: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
   claude: ['ANTHROPIC_API_KEY'],
 };
@@ -26,7 +28,7 @@ function get(name) {
 
 // groups: daftar kelompok pengaturan yang wajib ada, mis. ['telegram', 'google'].
 function loadConfig(groups = ['telegram', 'google', 'claude']) {
-  const missing = groups.flatMap(g => GROUPS[g]).filter(n => !get(n));
+  const missing = groups.flatMap(g => (typeof GROUPS[g] === 'function' ? GROUPS[g]() : GROUPS[g])).filter(n => !get(n));
   if (missing.length) {
     throw new Error(`Pengaturan belum diisi di file .env: ${[...new Set(missing)].join(', ')}. Lihat docs/PANDUAN.md.`);
   }
@@ -35,6 +37,8 @@ function loadConfig(groups = ['telegram', 'google', 'claude']) {
   return {
     telegram: { token: get('TELEGRAM_BOT_TOKEN'), allowedUserIds: allowed },
     google: {
+      appsScriptUrl: get('APPS_SCRIPT_URL'),
+      appsScriptSecret: get('APPS_SCRIPT_SECRET'),
       clientId: get('GOOGLE_CLIENT_ID'),
       clientSecret: get('GOOGLE_CLIENT_SECRET'),
       refreshToken: get('GOOGLE_REFRESH_TOKEN'),

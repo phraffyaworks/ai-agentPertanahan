@@ -8,7 +8,7 @@ Syarat: kode sudah ada di cabang `main` repositori GitHub, dan repositorinya **p
 
 1. Siapkan nilai dari Langkah 1–3 di docs/PANDUAN.md:
    - token bot Telegram;
-   - Client ID dan Client secret Google;
+   - Web app URL Apps Script (docs/APPS-SCRIPT.md);
    - kunci Claude API.
 2. Buka hPanel → VPS → **Browser terminal**.
 3. Tempel perintah ini, lalu tekan Enter:
@@ -23,10 +23,7 @@ Syarat: kode sudah ada di cabang `main` repositori GitHub, dan repositorinya **p
 5. Program lalu menanyakan nilai satu per satu. Tempel setiap nilai, lalu tekan Enter.
    - Setiap nilai langsung diuji. Bila salah, program meminta ulang.
    - ID Telegram Anda dicari otomatis: program meminta Anda mengirim "halo" ke bot.
-   - Untuk izin Google, program menampilkan sebuah alamat. Buka alamat itu di browser HP atau laptop, lalu masuk dengan phraffyaworks@gmail.com.
-   - Pada peringatan "Google hasn't verified this app", tekan **Advanced**, lalu **Go to … (unsafe)**. Ini wajar karena aplikasinya buatan Anda sendiri.
-   - Pada halaman izin, **centang semua kotak akses** (Drive dan Sheets), lalu tekan **Continue**. Bila ada kotak yang tidak dicentang, bot tidak bisa bekerja.
-   - Setelah itu browser menampilkan halaman yang gagal dimuat. Itu wajar. Salin alamat lengkap dari address bar, lalu tempel kembali di terminal.
+   - Saat diminta **alamat Web App Apps Script**, tempel Web app URL yang diakhiri `/exec`. Program memasangkan kode rahasia secara otomatis, lalu memeriksa bahwa folder Otomasi bisa dibuka.
 6. Terakhir, bot dijalankan sebagai layanan yang menyala 24 jam, juga setelah server reboot. Kirim satu PDF ke bot untuk mencoba.
 
 Perintah yang sama dipakai lagi untuk memperbarui kode. Nilai yang sudah tersimpan cukup dikonfirmasi dengan Enter.

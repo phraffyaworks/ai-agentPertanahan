@@ -6,6 +6,8 @@ const { spawnSync } = require('child_process');
 const Anthropic = require('@anthropic-ai/sdk').default;
 const { Bot } = require('grammy');
 const { readEnv, setEnvValues } = require('../src/util/envfile');
+const { newSecret, createAppsScriptClient } = require('../src/google/appsscript');
+const { loadConfig } = require('../src/config');
 
 const ROOT = path.join(__dirname, '..');
 const ENV_FILE = path.join(ROOT, '.env');
@@ -84,12 +86,23 @@ async function main() {
     console.log(`  OK: hanya akun ID ${id} yang dilayani bot.\n`);
   }
 
-  console.log('Langkah B: Google');
-  await tanya('GOOGLE_CLIENT_ID', 'Tempel Client ID (diakhiri .apps.googleusercontent.com)', async v => {
-    if (!v.endsWith('.apps.googleusercontent.com')) throw new Error('bentuknya tidak seperti Client ID.');
-    return null;
+  console.log('Langkah B: Google Drive & Sheets (lewat Apps Script, lihat docs/APPS-SCRIPT.md)');
+  // Kode rahasia dibuat di sini dan dipasangkan ke skrip; pengguna tidak perlu menyalinnya.
+  if (!env.APPS_SCRIPT_SECRET) {
+    env.APPS_SCRIPT_SECRET = newSecret();
+    setEnvValues(ENV_FILE, { APPS_SCRIPT_SECRET: env.APPS_SCRIPT_SECRET }, path.join(ROOT, '.env.example'));
+  }
+  const { google } = loadConfig([]);
+  await tanya('APPS_SCRIPT_URL', 'Tempel alamat Web App Apps Script (diawali https://script.google.com/macros/s/ dan diakhiri /exec)', async url => {
+    if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)) {
+      throw new Error('bentuknya bukan alamat Web App. Salin "Web app URL" yang diakhiri /exec.');
+    }
+    const client = createAppsScriptClient({ url, secret: env.APPS_SCRIPT_SECRET });
+    await client.call('pasang', { secret: env.APPS_SCRIPT_SECRET });
+    const { akun } = await client.call('ping');
+    const folder = await client.call('driveGetFolder', { id: google.folderIndukId });
+    return `terhubung sebagai ${akun}; folder induk "${folder.name}" bisa dibuka`;
   });
-  await tanya('GOOGLE_CLIENT_SECRET', 'Tempel Client secret');
 
   console.log('Langkah C: Claude');
   await tanya('ANTHROPIC_API_KEY', 'Tempel kunci Claude API (diawali sk-ant-)', async k => {
@@ -97,13 +110,9 @@ async function main() {
     return `model ${m.id} tersedia`;
   });
 
-  console.log('Langkah D: izin Google Drive & Sheets');
-  const sudah = env.GOOGLE_REFRESH_TOKEN
-    && (await rl.question('Izin Google sudah pernah diberikan. Ulangi? (y/t) ')).trim().toLowerCase() !== 'y';
   rl.close();
-  if (!sudah && !jalankan('authorize-google.js')) process.exit(1);
 
-  console.log('\nLangkah E: pemeriksaan akhir');
+  console.log('\nLangkah D: pemeriksaan akhir');
   process.exit(jalankan('cek-koneksi.js') ? 0 : 1);
 }
 

@@ -37,7 +37,7 @@ Penyiapan langkah demi langkah ada di [docs/PANDUAN.md](docs/PANDUAN.md).
 | Perintah | Fungsi |
 |---|---|
 | `npm install` | memasang paket |
-| `npm run authorize-google` | memberi izin Google (sekali saja) |
+| `npm run setup` | penyiapan terpandu: token, Apps Script, kunci Claude, pemeriksaan |
 | `npm run cek` | memeriksa sambungan Telegram, Drive, Sheets, dan Claude |
 | `npm start` | menjalankan bot |
 | `npm test` | menjalankan pengujian otomatis |
@@ -50,9 +50,10 @@ src/
   config.js             membaca .env
   telegram/             bot dan teks pesan
   ai/extract.js         membaca PDF dengan Claude (model claude-opus-5-5)
-  google/               Drive (folder, unggah) dan Sheets (Master Data)
+  google/               Drive dan Sheets: lewat Apps Script (bawaan) atau OAuth Client ID
   pipeline/intake.js    alur penerimaan pengaduan
   state/store.js        status kasus di data/kasus.json
-scripts/                authorize-google, cek-koneksi
+apps-script/Kode.gs     skrip jembatan Drive & Sheets yang dipasang di akun Google pengguna
+scripts/                setup, cek-koneksi, authorize-google (hanya untuk cara OAuth)
 test/                   pengujian otomatis
 ```
