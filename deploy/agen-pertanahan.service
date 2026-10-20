@@ -1,0 +1,16 @@
+# Layanan systemd: bot berjalan terus dan otomatis menyala lagi bila berhenti atau server reboot.
+[Unit]
+Description=Agen Pengaduan Pertanahan (bot Telegram)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=agen
+WorkingDirectory=/home/agen/ai-agentPertanahan
+ExecStart=/usr/bin/env node src/index.js
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

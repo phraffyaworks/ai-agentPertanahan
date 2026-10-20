@@ -15,7 +15,10 @@ Catatan jawaban pengguna yang menjadi aturan tetap agen. Bila skill lama (telaah
   - `Notula Gelar Kasus Awal_<nama folder>.docx`
 
 ## Master Data
-- Status awal `Menunggu`. Status berubah paling cepat setelah PDF Telaahan bertanda tangan diterima. Nilai statusnya belum ditentukan.
+- Nilai Status:
+  - `Menunggu`: saat pengaduan tercatat.
+  - `Proses Penanganan`: setelah PDF Telaahan bertanda tangan diterima.
+  - `Selesai`: setelah ada produk sukel (cara agen mengetahuinya belum ditentukan).
 - Rencana TL ditentukan pengguna lewat chat; tidak diisi otomatis.
 - Pokok Permasalahan dan Teradu diisi saat pengaduan masuk, lalu diperbarui agar sama dengan Telaahan setelah Telaahan disetujui.
 
@@ -32,4 +35,5 @@ Catatan jawaban pengguna yang menjadi aturan tetap agen. Bila skill lama (telaah
 - Judul disusun dengan pola "Permasalahan … atas Tanah Seluas … antara … dan … Terletak di …" (seperti contoh Notula Cikarang), bukan disalin dari judul Telaahan.
 
 ## Lingkungan
-- Uji coba di komputer Windows maupun Linux; nantinya dipindahkan ke VPS Hostinger.
+- Uji coba di komputer Windows maupun Linux.
+- Server: VPS Hostinger KVM 2 (2 CPU, 8 GB RAM, 100 GB), Ubuntu 26.04 LTS, lokasi Kuala Lumpur, diakses lewat terminal di hPanel.

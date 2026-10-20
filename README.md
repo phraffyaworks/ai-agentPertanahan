@@ -22,7 +22,7 @@ Penyiapan langkah demi langkah ada di [docs/PANDUAN.md](docs/PANDUAN.md).
 | 1 | Persiapan akun (Telegram, Google, Claude) | panduan tersedia |
 | 2 | Penerimaan PDF, folder, nama file, Master Data | selesai ditulis, belum diuji dengan akun asli |
 | 3 | Draf Telaahan, revisi via chat, .docx, TTD, Notula | belum |
-| 4 | Pemindahan ke VPS Hostinger | belum |
+| 4 | Pemindahan ke VPS Hostinger | panduan tersedia (docs/VPS.md) |
 
 ## Aturan yang dipegang
 
