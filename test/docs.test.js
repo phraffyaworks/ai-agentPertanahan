@@ -45,14 +45,14 @@ test('Nota Dinas: format contoh pengguna (margin 2,54 cm, NIP bertitik, satu tem
   assert.strictEqual((xml.match(/<w:numPr>/g) || []).length, 6);
 });
 
-test('Surat Keluar: ruang kop 5,3 cm, nomor kosong berpola putih, NIP tanpa titik, tembusan bernomor', async () => {
+test('Surat Keluar: ruang kop 5,3 cm, nomor kosong berpola putih, NIP bertitik, tembusan bernomor', async () => {
   const xml = await docXml(await buildSuratKeluar(contohSuratKeluar));
   assert.match(xml, /w:top="3005"[^>]*w:right="1077"/);
   assert.match(xml, /w:color w:val="FFFFFF"\/>.*?<w:t[^>]*>\.\.\.\/\.\.\.\.\.-800\.SK\.01\/[IVX]+\/\d{4}</);
   assert.ok(xml.includes('Jakarta,'));
   assert.ok(xml.includes('a.n Direktur Jenderal'));
   assert.ok(xml.includes('Direktur Penanganan Sengketa Pertanahan,'));
-  assert.ok(xml.includes('NIP 19690818 199103 1 004') && !xml.includes('NIP. '));
+  assert.ok(xml.includes('NIP. 19690818 199103 1 004'));
   assert.ok(xml.includes('pump house') && xml.includes('<w:i/>'));
   // 4 butir + 6 sub-butir + 2 tembusan
   assert.strictEqual((xml.match(/<w:numPr>/g) || []).length, 12);

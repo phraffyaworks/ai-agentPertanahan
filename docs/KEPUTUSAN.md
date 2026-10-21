@@ -42,7 +42,15 @@ Catatan jawaban pengguna yang menjadi aturan tetap agen. Bila skill lama (telaah
 
 ## Format Nota Dinas dan Surat Keluar
 - Dua jenis surat: Nota Dinas dan Surat Keluar. Tata letak mengikuti contoh Word yang dikirim pengguna (Oktober 2026): Nota Dinas "Pelimpahan Berkas ke Sesdit PHPT", Surat Keluar ke Kantor Pertanahan Kabupaten Bekasi, dan Surat Keluar ke PT Cikarang Listrindo, Tbk. Aturan isinya di src/agent/pengetahuan/surat.md.
+- Acuan Nota Dinas: dua nota terakhir pada contoh (Direktur kepada Sekretaris Direktorat Jenderal, dan Sekretaris Direktorat Jenderal kepada Sekretaris Direktorat Jenderal Penetapan Hak dan Pendaftaran Tanah).
 - Huruf Bookman Old Style 10,5–11 pt (contoh memakai 11 pt, dan itu yang dipakai), paragraf rata kanan-kiri.
+- Awalan NIP diseragamkan menjadi `NIP.` (berspasi) di semua dokumen, termasuk Surat Keluar.
+- Margin bawah Nota Dinas 2,54 cm (bukan 0,25 cm seperti contoh).
+- Draf surat dikirim di chat sampai disetujui, baru dibuat .docx. File disimpan di folder pengadu dan dikirim ke Telegram:
+  - `Nota Dinas_<tujuan singkat>_<nama folder>.docx`
+  - `Surat Keluar_<tujuan singkat>_<nama folder>.docx`
+- Nomor dan tanggal surat dikosongkan. Kata sambung di pergantian halaman diatur pengguna sendiri.
+- Penanda tangan: Direktur Penanganan Sengketa Pertanahan adalah I Made Daging, A.Ptnh., M.H.; Sekretaris Direktorat Jenderal Penanganan Sengketa dan Konflik Pertanahan adalah Lalu Harisandi, S.ST., M.H., QCRO.
 
 ## Lingkungan
 - Akses Google Drive & Sheets lewat Apps Script milik pengguna (docs/APPS-SCRIPT.md), karena tombol Publish app di Google Cloud tidak bisa dipakai dan status Testing membuat izin habis setiap 7 hari.

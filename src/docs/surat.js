@@ -1,15 +1,17 @@
 // Membuat Nota Dinas dan Surat Keluar dari data JSON, hasilnya Buffer .docx.
 // Tata letak disalin dari contoh Word pengguna (Oktober 2026):
-// - Nota Dinas (contoh "Pelimpahan Berkas ke Sesdit PHPT"): A4, margin 2,54 cm, judul NOTA DINAS di
+// - Nota Dinas (dua nota terakhir pada contoh "Pelimpahan Berkas ke Sesdit PHPT"): A4, margin 2,54 cm
+//   (margin bawah contoh 0,25 cm tidak dipakai, keputusan pengguna), judul NOTA DINAS di
 //   ±4,7 cm dari atas, kepala nota Yth./Dari/Tanggal/Lampiran/Hal berspasi 1, garis di bawahnya, isi spasi 1,5.
 // - Surat Keluar (contoh "Kantah Kab Bekasi" dan "PT Cikarang Listrindo"): A4, margin kiri-kanan 1,9 cm,
 //   ruang kop 5,3 cm di setiap halaman, Nomor/Sifat/Lampiran/Hal, "Jakarta," sejajar Nomor, isi spasi 1,5.
-// Keduanya Bookman Old Style 11 pt, rata kanan-kiri, butir 1./a. otomatis. Nomor dan tanggal dikosongkan
-// (diisi setelah penomoran) kecuali diberikan.
+// Keduanya Bookman Old Style 11 pt, rata kanan-kiri, butir 1./a. otomatis, awalan "NIP." seperti dokumen
+// lain. Nomor dan tanggal dikosongkan (diisi setelah penomoran) kecuali diberikan.
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   WidthType, AlignmentType, BorderStyle, LevelFormat, HeightRule,
 } = require('docx');
+const { formatNip } = require('./telaahan');
 
 const F = 'Bookman Old Style', S = 22, LS = 360;
 const J = AlignmentType.JUSTIFIED, C = AlignmentType.CENTER, L = AlignmentType.LEFT;
@@ -21,13 +23,6 @@ const r = (t, o = {}) => new TextRun({ text: t, font: F, size: S, ...o });
 const runs = (t, o = {}) => String(t).split(/(\*[^*]+\*)/).filter(Boolean)
   .map(s => (s.startsWith('*') && s.endsWith('*') && s.length > 2 ? r(s.slice(1, -1), { italics: true, ...o }) : r(s, o)));
 const kosong = v => v === undefined || v === null || String(v).trim() === '';
-
-// NIP 18 digit ditulis berspasi (19690818 199103 1 004) dengan awalan sesuai contoh tiap jenis surat.
-function nip(n, awalan) {
-  const d = String(n || '').replace(/^\s*NIP\.?\s*/i, '').replace(/\s+/g, '');
-  const isi = /^\d{18}$/.test(d) ? `${d.slice(0, 8)} ${d.slice(8, 14)} ${d.slice(14, 15)} ${d.slice(15)}` : String(n || '').replace(/^\s*NIP\.?\s*/i, '');
-  return `${awalan} ${isi}`;
-}
 
 const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
 const noB = { top: none, bottom: none, left: none, right: none };
@@ -99,7 +94,7 @@ function buildNotaDinas(D) {
     ttd(p.jabatan, { after: 200, line: 276 }),
     ttd('', { after: 200, line: 276 }),
     ttd(p.nama, { after: 0 }),
-    new Paragraph({ alignment: C, indent: { left: 3600 }, keepLines: true, spacing: { after: 0 }, children: [r(nip(p.nip, 'NIP.'))] }),
+    new Paragraph({ alignment: C, indent: { left: 3600 }, keepLines: true, spacing: { after: 0 }, children: [r(formatNip(p.nip))] }),
     ...[1, 2, 3].map(() => new Paragraph({ spacing: { after: 0 }, children: [] })),
     ...tembusan(D.tembusan, 'Tembusan :', { after: 0 }),
   ]);
@@ -146,7 +141,7 @@ function buildSuratKeluar(D) {
       cell(4952, [
         ...(kosong(p.atas_nama) ? [] : [ttd(p.atas_nama)]),
         ttd(jabatan), ttd('', 200), ttd('', 200), ttd(p.nama),
-        new Paragraph({ alignment: C, keepLines: true, spacing: s, children: [r(nip(p.nip, 'NIP'))] }),
+        new Paragraph({ alignment: C, keepLines: true, spacing: s, children: [r(formatNip(p.nip))] }),
       ]),
     ] })]),
     ...[1, 2, 3].map(() => new Paragraph({ spacing: s, children: [] })),
@@ -154,4 +149,4 @@ function buildSuratKeluar(D) {
   ]);
 }
 
-module.exports = { buildNotaDinas, buildSuratKeluar, nip };
+module.exports = { buildNotaDinas, buildSuratKeluar };

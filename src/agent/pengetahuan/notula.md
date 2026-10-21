@@ -5,7 +5,7 @@ Disusun dari Telaahan Staf kasusnya (Lampiran V Permen ATR/BPN No. 21 Tahun 2020
 ## Yang wajib ditanyakan bila belum disebut pengguna (jangan diasumsikan)
 - Hasil gelar (kesimpulan). Contoh kasus Cikarang: akan dilaksanakan Penelitian.
 - Tipologi dan Klasifikasi kasus (Berat/Sedang/Ringan): pengguna yang menyampaikan.
-- Pimpinan gelar: nama, NIP, jabatan, apakah Plh. Terakhir tercatat: Lalu Harisandi, S.ST., M.H., QCRO, NIP. 19800920 199903 1 001, Plh. Direktur Penanganan Sengketa Pertanahan. Tanyakan apakah masih sama; jangan memakainya otomatis.
+- Pimpinan gelar: nama, NIP, jabatan, apakah Plh. Tanyakan; jangan diasumsikan. Pejabat saat ini menurut pengguna: Direktur Penanganan Sengketa Pertanahan I Made Daging, A.Ptnh., M.H., NIP. 19690818 199103 1 004; Sekretaris Direktorat Jenderal Lalu Harisandi, S.ST., M.H., QCRO., NIP. 19800920 199903 1 001.
 - Pemapar, tempat, hari/tanggal/jam, alamat pengadu dan teradu, nomor notula.
 Isian yang tetap tidak diketahui dibiarkan kosong; alat mengisinya `[PERLU CEK]` (disorot kuning).
 

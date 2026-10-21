@@ -1,23 +1,23 @@
 # Aturan Nota Dinas dan Surat Keluar
 
-Disusun dari contoh Word pengguna (Oktober 2026): Nota Dinas "Pelimpahan Berkas ke Sesdit PHPT" (kasus Indah Soetanto), Surat Keluar ke Kepala Kantor Pertanahan Kabupaten Bekasi dan Surat Keluar ke PT Cikarang Listrindo, Tbk. Tata letak sudah dikunci di alat `buat_nota_dinas` dan `buat_surat_keluar`.
+Disusun dari contoh Word pengguna (Oktober 2026): Nota Dinas "Pelimpahan Berkas ke Sesdit PHPT" (acuannya dua nota terakhir, kasus Indah Soetanto), Surat Keluar ke Kepala Kantor Pertanahan Kabupaten Bekasi dan Surat Keluar ke PT Cikarang Listrindo, Tbk. Tata letak sudah dikunci di alat `buat_nota_dinas` dan `buat_surat_keluar`.
 
 ## Alur
 1. Tanyakan dulu yang belum jelas: jenis surat, tujuan, penanda tangan, dan isi pokoknya. Jangan menebak.
 2. Tampilkan draf lengkap di chat: kepala surat, isi bernomor, penutup, penanda tangan, tembusan. Revisi sampai pengguna menyatakan setuju.
 3. Panggil alatnya dengan isi yang disetujui, persis tanpa perubahan. Isi `tujuan_singkat` untuk nama file (mis. "Kantah Kab Bekasi", "Pengadu", "Sesditjen PSKP").
-4. Saat file terkirim, ingatkan bahwa nomor dan tanggal diisi setelah penomoran, dan kata sambung di kanan bawah halaman (mis. "tersebut ...") ditambahkan manual setelah tata letak final.
+4. Nomor dan tanggal dikosongkan, diisi setelah penomoran. Kata sambung di pergantian halaman diatur pengguna sendiri; tidak perlu diingatkan.
 
 ## Jenis surat
 - **Nota Dinas**: surat antarunit di dalam Kementerian, mis. pelimpahan berkas ke Direktorat Jenderal lain.
 - **Surat Keluar**: surat ke pihak di luar Kementerian pusat, mis. Kantor Pertanahan, Kantor Wilayah, atau Pengadu.
 - Contoh pelimpahan kasus Indah Soetanto berisi dua Nota Dinas: dari Direktur Penanganan Sengketa Pertanahan kepada Sekretaris Direktorat Jenderal Penanganan Sengketa dan Konflik Pertanahan, lalu dari Sekretaris Direktorat Jenderal kepada Sekretaris Direktorat Jenderal Penetapan Hak dan Pendaftaran Tanah. Tanyakan apakah perlu satu atau keduanya.
 
-## Penanda tangan
-Selalu tanyakan atau konfirmasi; jangan memakai nama di bawah ini otomatis. Terakhir tercatat di contoh:
-- Direktur Penanganan Sengketa Pertanahan: I Made Daging, A.Ptnh., M.H., NIP 19690818 199103 1 004.
-- Sekretaris Direktorat Jenderal Penanganan Sengketa dan Konflik Pertanahan: Lalu Harisandi, S.ST., M.H., QCRO., NIP 19800920 199903 1 001.
-Pada contoh Surat Keluar, Direktur menandatangani atas nama Direktur Jenderal: `atas_nama` "a.n Direktur Jenderal", jabatan "Direktur Penanganan Sengketa Pertanahan". Awalan NIP mengikuti contoh: "NIP." pada Nota Dinas, "NIP" tanpa titik pada Surat Keluar (dibuat otomatis).
+## Penanda tangan (ditetapkan pengguna)
+Penanda tangan mengikuti pengirim surat:
+- Dari Direktur Penanganan Sengketa Pertanahan: jabatan "Direktur Penanganan Sengketa Pertanahan", I Made Daging, A.Ptnh., M.H., NIP 19690818 199103 1 004.
+- Dari Sekretaris Direktorat Jenderal Penanganan Sengketa dan Konflik Pertanahan: jabatan tanda tangan "Sekretaris Direktorat Jenderal", Lalu Harisandi, S.ST., M.H., QCRO., NIP 19800920 199903 1 001.
+Pada Surat Keluar, Direktur menandatangani atas nama Direktur Jenderal: `atas_nama` "a.n Direktur Jenderal", jabatan "Direktur Penanganan Sengketa Pertanahan". Bila pengirimnya pejabat lain, tanyakan nama, jabatan, dan NIP-nya. Awalan "NIP." dibuat otomatis.
 
 ## Nota Dinas
 - Kepala: Yth., Dari, Tanggal (kosong), Lampiran (mis. "1 (Satu) Berkas"), Hal (mis. "Pelimpahan Berkas"). Nomor dikosongkan.
