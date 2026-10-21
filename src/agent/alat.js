@@ -3,9 +3,10 @@
 const { z } = require('zod');
 const { HEADER } = require('../google/sheets');
 const { FIELDS, catatPengaduan, rencanaNama } = require('../pipeline/intake');
-const { uniqueName, PERLU_CEK } = require('../util/naming');
+const { uniqueName, sanitizeName, PERLU_CEK } = require('../util/naming');
 const { buildTelaahan } = require('../docs/telaahan');
 const { buildNotula } = require('../docs/notula');
+const { buildNotaDinas, buildSuratKeluar } = require('../docs/surat');
 
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const WIB = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'full', timeStyle: 'short' });
@@ -66,6 +67,61 @@ const NOTULA_SCHEMA = {
   },
   required: ['nomor', 'judul', 'dasar', 'tempat', 'waktu', 'pimpinan', 'pemapar', 'objek', 'pengadu', 'teradu', 'pokok_masalah', 'akar_masalah', 'tipologi', 'klasifikasi', 'kesimpulan'],
 };
+
+// Nota Dinas dan Surat Keluar: isi butir 1./a. sama; nomor dan tanggal dikosongkan kecuali diberikan.
+const wajib = z.string().trim().min(1);
+const Butir = z.array(z.union([wajib, z.object({ teks: wajib, huruf: z.array(wajib).optional() })])).min(1);
+const Ttd = z.object({ jabatan: wajib, nama: wajib, nip: wajib });
+const NotaDinas = z.object({
+  kepada: wajib, dari: wajib, lampiran: wajib, hal: wajib, butir: Butir, penutup: wajib, penandatangan: Ttd,
+  tembusan: z.array(wajib), nomor: z.string().optional(), tanggal: z.string().optional(),
+});
+const SuratKeluar = z.object({
+  sifat: wajib, lampiran: wajib, hal: wajib, kepada: wajib, di: wajib, pembuka: wajib, butir: Butir, penutup: wajib,
+  penandatangan: Ttd.extend({ atas_nama: z.string().optional() }), tembusan: z.array(wajib),
+  nomor: z.string().optional(), tanggal: z.string().optional(),
+});
+const BUTIR_SCHEMA = { type: 'array', description: 'Butir bernomor 1., 2., ...: teks biasa, atau {teks, huruf:[...]} untuk sub-butir a., b., ...', items: { anyOf: [{ type: 'string' }, { type: 'object', properties: { teks: { type: 'string' }, huruf: { type: 'array', items: { type: 'string' } } }, required: ['teks'] }] } };
+const TTD_PROPS = { jabatan: str('Mis. "Direktur Penanganan Sengketa Pertanahan".'), nama: str('Nama lengkap dengan gelar.'), nip: str('18 digit; ditulis berspasi otomatis.') };
+const OPSIONAL_NOMOR_TANGGAL = { nomor: str('Kosongkan kecuali pengguna menyebutkan nomornya.'), tanggal: str('Kosongkan kecuali pengguna menyebutkan tanggalnya.') };
+const NOTA_DINAS_SCHEMA = {
+  type: 'object', description: 'Isi Nota Dinas yang sudah disetujui pengguna. Teks *miring* untuk istilah asing.',
+  properties: {
+    kepada: str('Isian "Yth.", mis. "Sekretaris Direktorat Jenderal Penanganan Sengketa dan Konflik Pertanahan".'),
+    dari: str('Jabatan pengirim.'), lampiran: str('Mis. "1 (Satu) Berkas" atau "-".'), hal: { type: 'string' },
+    butir: BUTIR_SCHEMA, penutup: str('Mis. "Demikian untuk menjadikan maklum."'),
+    penandatangan: { type: 'object', properties: TTD_PROPS, required: ['jabatan', 'nama', 'nip'] },
+    tembusan: { type: 'array', items: { type: 'string' }, description: 'Boleh kosong. Satu tembusan ditulis tanpa nomor.' },
+    ...OPSIONAL_NOMOR_TANGGAL,
+  },
+  required: ['kepada', 'dari', 'lampiran', 'hal', 'butir', 'penutup', 'penandatangan', 'tembusan'],
+};
+const SURAT_KELUAR_SCHEMA = {
+  type: 'object', description: 'Isi Surat Keluar yang sudah disetujui pengguna. Teks *miring* untuk istilah asing.',
+  properties: {
+    sifat: str('Mis. "Biasa".'), lampiran: str('Mis. "1 (satu) Berkas" atau "-".'), hal: { type: 'string' },
+    kepada: str('Setelah "Yth.", mis. "Kepala Kantor Pertanahan Kabupaten Bekasi".'),
+    di: str('Baris setelah "di -", mis. "Cikarang" atau "Tempat".'),
+    pembuka: str('Paragraf pembuka "Sehubungan dengan ...".'), butir: BUTIR_SCHEMA,
+    penutup: str('Mis. "Demikian disampaikan untuk dilaksanakan."'),
+    penandatangan: { type: 'object', properties: { atas_nama: str('Opsional, mis. "a.n Direktur Jenderal".'), ...TTD_PROPS }, required: ['jabatan', 'nama', 'nip'] },
+    tembusan: { type: 'array', items: { type: 'string' }, description: 'Boleh kosong. Dua atau lebih diberi nomor.' },
+    ...OPSIONAL_NOMOR_TANGGAL,
+  },
+  required: ['sifat', 'lampiran', 'hal', 'kepada', 'di', 'pembuka', 'butir', 'penutup', 'penandatangan', 'tembusan'],
+};
+const TUJUAN_SINGKAT = str('Singkatan tujuan surat untuk nama file, mis. "Kantah Kab Bekasi", "Pengadu", "Sesditjen PHPT".');
+
+// Ringkasan persetujuan untuk Nota Dinas dan Surat Keluar.
+async function ringkasSurat(ctx, i, jenis) {
+  const f = await namaFolder(ctx, i.folder_id);
+  const d = i.data, p = d.penandatangan;
+  return [`Membuat ${jenis} (.docx):`, `• Disimpan di folder "${f.name}" sebagai ${jenis}_${sanitizeName(i.tujuan_singkat)}_${f.name}.docx`,
+    '• Dikirim juga ke chat ini', `• Yth.: ${d.kepada}`, `• Hal: ${d.hal}`,
+    `• Penanda tangan: ${[p.atas_nama, p.jabatan, p.nama].filter(Boolean).join(' / ')}`,
+    `• Isi: ${d.butir.length} butir; tembusan: ${d.tembusan.length}`,
+    `• Nomor dan tanggal: ${d.nomor || d.tanggal ? [d.nomor, d.tanggal].filter(Boolean).join(', ') : 'dikosongkan'}`].join('\n');
+}
 
 const EMAIL_PROPS = {
   kepada: str('Alamat email penerima; pisahkan dengan koma bila lebih dari satu.'),
@@ -217,6 +273,31 @@ const ALAT = [
     async run(ctx, i) {
       const buf = await buildNotula(i.data);
       return json(await simpanDocx(ctx, i.folder_id, 'Notula Gelar Kasus Awal', buf, 'Notula Gelar Kasus Awal'));
+    },
+  },
+
+  {
+    name: 'buat_nota_dinas',
+    ubah: true,
+    description: 'Membuat file Word Nota Dinas dari isi yang sudah DISETUJUI pengguna di chat, menyimpannya di folder pengadu sebagai "Nota Dinas_<tujuan singkat>_<nama folder>.docx", dan mengirimnya ke chat.',
+    input_schema: { type: 'object', properties: { folder_id: str('ID folder pengadu.'), tujuan_singkat: TUJUAN_SINGKAT, data: NOTA_DINAS_SCHEMA }, required: ['folder_id', 'tujuan_singkat', 'data'] },
+    zod: z.object({ folder_id: z.string(), tujuan_singkat: wajib, data: NotaDinas }),
+    ringkasan: (ctx, i) => ringkasSurat(ctx, i, 'Nota Dinas'),
+    async run(ctx, i) {
+      const buf = await buildNotaDinas(i.data);
+      return json(await simpanDocx(ctx, i.folder_id, `Nota Dinas_${sanitizeName(i.tujuan_singkat)}`, buf, 'Nota Dinas'));
+    },
+  },
+  {
+    name: 'buat_surat_keluar',
+    ubah: true,
+    description: 'Membuat file Word Surat Keluar dari isi yang sudah DISETUJUI pengguna di chat, menyimpannya di folder pengadu sebagai "Surat Keluar_<tujuan singkat>_<nama folder>.docx", dan mengirimnya ke chat.',
+    input_schema: { type: 'object', properties: { folder_id: str('ID folder pengadu.'), tujuan_singkat: TUJUAN_SINGKAT, data: SURAT_KELUAR_SCHEMA }, required: ['folder_id', 'tujuan_singkat', 'data'] },
+    zod: z.object({ folder_id: z.string(), tujuan_singkat: wajib, data: SuratKeluar }),
+    ringkasan: (ctx, i) => ringkasSurat(ctx, i, 'Surat Keluar'),
+    async run(ctx, i) {
+      const buf = await buildSuratKeluar(i.data);
+      return json(await simpanDocx(ctx, i.folder_id, `Surat Keluar_${sanitizeName(i.tujuan_singkat)}`, buf, 'Surat Keluar'));
     },
   },
 

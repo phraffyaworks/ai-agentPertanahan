@@ -25,3 +25,42 @@ test('Notula: docx terbentuk; isian kosong tidak menggagalkan', async () => {
   assert.ok(isDocx(await buildNotula(contohNotula)));
   assert.ok(isDocx(await buildNotula({ ...contohNotula, pimpinan: {}, tempat: '', waktu: '' })));
 });
+
+// Isi document.xml dari .docx (jszip ikut terpasang bersama paket docx).
+const JSZip = require('jszip');
+const { buildNotaDinas, buildSuratKeluar } = require('../src/docs/surat');
+const contohNotaDinas = require('./contoh/nota-dinas.json');
+const contohSuratKeluar = require('./contoh/surat-keluar.json');
+const docXml = async buf => (await JSZip.loadAsync(buf)).file('word/document.xml').async('string');
+
+test('Nota Dinas: format contoh pengguna (margin 2,54 cm, NIP bertitik, satu tembusan tanpa nomor)', async () => {
+  const buf = await buildNotaDinas(contohNotaDinas);
+  assert.ok(isDocx(buf));
+  const xml = await docXml(buf);
+  assert.match(xml, /w:top="1440"[^>]*w:right="1440"/);
+  assert.ok(xml.includes('NOTA DINAS'));
+  assert.ok(xml.includes('NIP. 19690818 199103 1 004'));
+  assert.ok(xml.includes('Tembusan :'));
+  // butir 1-4 dan sub-butir a/b bernomor otomatis, tembusan tunggal tidak
+  assert.strictEqual((xml.match(/<w:numPr>/g) || []).length, 6);
+});
+
+test('Surat Keluar: ruang kop 5,3 cm, nomor kosong berpola putih, NIP tanpa titik, tembusan bernomor', async () => {
+  const xml = await docXml(await buildSuratKeluar(contohSuratKeluar));
+  assert.match(xml, /w:top="3005"[^>]*w:right="1077"/);
+  assert.match(xml, /w:color w:val="FFFFFF"\/>.*?<w:t[^>]*>\.\.\.\/\.\.\.\.\.-800\.SK\.01\/[IVX]+\/\d{4}</);
+  assert.ok(xml.includes('Jakarta,'));
+  assert.ok(xml.includes('a.n Direktur Jenderal'));
+  assert.ok(xml.includes('Direktur Penanganan Sengketa Pertanahan,'));
+  assert.ok(xml.includes('NIP 19690818 199103 1 004') && !xml.includes('NIP. '));
+  assert.ok(xml.includes('pump house') && xml.includes('<w:i/>'));
+  // 4 butir + 6 sub-butir + 2 tembusan
+  assert.strictEqual((xml.match(/<w:numPr>/g) || []).length, 12);
+});
+
+test('Surat Keluar: nomor dan tanggal yang diberikan tampil', async () => {
+  const xml = await docXml(await buildSuratKeluar({ ...contohSuratKeluar, nomor: '12/800.SK.01/X/2026', tanggal: '21 Oktober 2026' }));
+  assert.ok(xml.includes('12/800.SK.01/X/2026'));
+  assert.ok(xml.includes('Jakarta, 21 Oktober 2026'));
+  assert.ok(!xml.includes('<w:color w:val="FFFFFF"/>'), 'pola nomor putih tidak dipakai bila nomor diberikan');
+});

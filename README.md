@@ -10,6 +10,7 @@ Penyiapan: [docs/PANDUAN.md](docs/PANDUAN.md), lalu [docs/APPS-SCRIPT.md](docs/A
 - **Telaahan Staf:** draf di chat, revisi lewat percakapan, lalu file .docx yang disimpan di folder pengadu dan dikirim ke Telegram.
 - **Telaahan bertanda tangan dan Surat REFF:** berkas yang dikirim sebagai balasan disimpan ke folder pengadu, dan Status diperbarui.
 - **Notula Gelar Kasus Awal:** dibuat langsung sebagai .docx setelah hasil gelar disampaikan.
+- **Nota Dinas dan Surat Keluar:** draf di chat, revisi lewat percakapan, lalu file .docx berformat sesuai contoh Word pengguna, disimpan di folder pengadu dan dikirim ke Telegram.
 - **Gmail:** mencari, membaca, membalas, mengirim, dan membuat draf email.
 - **Kalender:** melihat, membuat, dan menghapus acara.
 - **Tanya-jawab umum**, dengan pencarian web bila perlu.
@@ -23,6 +24,7 @@ Setiap tindakan yang mengubah data atau mengirim sesuatu menunggu tombol **Setuj
 | Asisten percakapan, alat, persetujuan, riwayat | selesai ditulis dan lulus uji otomatis; belum diuji dengan akun asli |
 | Apps Script (Drive, Sheets, Gmail, Kalender) | selesai, versi 2 |
 | Dokumen Telaahan dan Notula (.docx) | selesai, tata letak sesuai docs/KEPUTUSAN.md |
+| Nota Dinas dan Surat Keluar (.docx) | selesai, tata letak sesuai contoh Word pengguna; belum diuji dengan akun asli |
 | Pemasangan VPS | satu perintah (docs/VPS.md) |
 
 ## Aturan yang dipegang
@@ -52,7 +54,7 @@ src/
   telegram/             bot Telegram, tombol persetujuan, format pesan
   agent/                asisten: putaran Claude (agen.js), alat (alat.js), prompt dan pengetahuan,
                         riwayat percakapan, berkas dari Telegram
-  docs/                 pembuat .docx Telaahan Staf dan Notula Gelar Kasus Awal
+  docs/                 pembuat .docx Telaahan Staf, Notula Gelar Kasus Awal, Nota Dinas, dan Surat Keluar
   google/               Drive dan Sheets: lewat Apps Script (bawaan) atau OAuth Client ID
   pipeline/intake.js    pencatatan pengaduan (folder, PDF, Master Data)
   state/store.js        catatan kasus di data/kasus.json
