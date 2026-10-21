@@ -42,7 +42,8 @@ Catatan jawaban pengguna yang menjadi aturan tetap agen. Bila skill lama (telaah
 
 ## Format Nota Dinas dan Surat Keluar
 - Dua jenis surat: Nota Dinas dan Surat Keluar. Tata letak mengikuti contoh Word yang dikirim pengguna (Oktober 2026): Nota Dinas "Pelimpahan Berkas ke Sesdit PHPT", Surat Keluar ke Kantor Pertanahan Kabupaten Bekasi, dan Surat Keluar ke PT Cikarang Listrindo, Tbk. Aturan isinya di src/agent/pengetahuan/surat.md.
-- Acuan Nota Dinas: dua nota terakhir pada contoh (Direktur kepada Sekretaris Direktorat Jenderal, dan Sekretaris Direktorat Jenderal kepada Sekretaris Direktorat Jenderal Penetapan Hak dan Pendaftaran Tanah).
+- Acuan Nota Dinas: dua nota terakhir pada contoh (Direktur kepada Sekretaris Direktorat Jenderal, dan Sekretaris Direktorat Jenderal kepada Sekretaris Direktorat Jenderal Direktorat Jenderal Penetapan Hak dan Pendaftaran Tanah).
+- Tujuan nota ke Ditjen Penetapan Hak dan Pendaftaran Tanah ditulis "Sekretaris Direktorat Jenderal Direktorat Jenderal Penetapan Hak dan Pendaftaran Tanah" ("Direktorat Jenderal" dua kali, sesuai contoh).
 - Huruf Bookman Old Style 10,5–11 pt (contoh memakai 11 pt, dan itu yang dipakai), paragraf rata kanan-kiri.
 - Awalan NIP diseragamkan menjadi `NIP.` (berspasi) di semua dokumen, termasuk Surat Keluar.
 - Margin bawah Nota Dinas 2,54 cm (bukan 0,25 cm seperti contoh).

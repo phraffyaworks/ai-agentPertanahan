@@ -1,6 +1,6 @@
 # Aturan Nota Dinas dan Surat Keluar
 
-Disusun dari contoh Word pengguna (Oktober 2026): Nota Dinas "Pelimpahan Berkas ke Sesdit PHPT" (acuannya dua nota terakhir, kasus Indah Soetanto), Surat Keluar ke Kepala Kantor Pertanahan Kabupaten Bekasi dan Surat Keluar ke PT Cikarang Listrindo, Tbk. Tata letak sudah dikunci di alat `buat_nota_dinas` dan `buat_surat_keluar`.
+Disusun dari contoh Word pengguna (Oktober 2026): Nota Dinas "Pelimpahan Berkas ke Sesdit PHPT" (acuannya dua nota terakhir, kasus Indahwati), Surat Keluar ke Kepala Kantor Pertanahan Kabupaten Bekasi dan Surat Keluar ke PT Cikarang Listrindo, Tbk. Tata letak sudah dikunci di alat `buat_nota_dinas` dan `buat_surat_keluar`.
 
 ## Alur
 1. Tanyakan dulu yang belum jelas: jenis surat, tujuan, penanda tangan, dan isi pokoknya. Jangan menebak.
@@ -11,7 +11,8 @@ Disusun dari contoh Word pengguna (Oktober 2026): Nota Dinas "Pelimpahan Berkas 
 ## Jenis surat
 - **Nota Dinas**: surat antarunit di dalam Kementerian, mis. pelimpahan berkas ke Direktorat Jenderal lain.
 - **Surat Keluar**: surat ke pihak di luar Kementerian pusat, mis. Kantor Pertanahan, Kantor Wilayah, atau Pengadu.
-- Contoh pelimpahan kasus Indah Soetanto berisi dua Nota Dinas: dari Direktur Penanganan Sengketa Pertanahan kepada Sekretaris Direktorat Jenderal Penanganan Sengketa dan Konflik Pertanahan, lalu dari Sekretaris Direktorat Jenderal kepada Sekretaris Direktorat Jenderal Penetapan Hak dan Pendaftaran Tanah. Tanyakan apakah perlu satu atau keduanya.
+- Contoh pelimpahan kasus Indahwati berisi dua Nota Dinas: dari Direktur Penanganan Sengketa Pertanahan kepada Sekretaris Direktorat Jenderal Penanganan Sengketa dan Konflik Pertanahan, lalu dari Sekretaris Direktorat Jenderal kepada Sekretaris Direktorat Jenderal Direktorat Jenderal Penetapan Hak dan Pendaftaran Tanah. Tanyakan apakah perlu satu atau keduanya.
+- Isian Yth. untuk Sekretaris Direktorat Jenderal Penetapan Hak dan Pendaftaran Tanah ditulis persis "Sekretaris Direktorat Jenderal Direktorat Jenderal Penetapan Hak dan Pendaftaran Tanah" ("Direktorat Jenderal" memang dua kali; ditetapkan pengguna).
 
 ## Penanda tangan (ditetapkan pengguna)
 Penanda tangan mengikuti pengirim surat:
