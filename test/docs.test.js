@@ -64,3 +64,24 @@ test('Surat Keluar: nomor dan tanggal yang diberikan tampil', async () => {
   assert.ok(xml.includes('Jakarta, 21 Oktober 2026'));
   assert.ok(!xml.includes('<w:color w:val="FFFFFF"/>'), 'pola nomor putih tidak dipakai bila nomor diberikan');
 });
+
+test('Surat Keluar: tanpa penanda tangan, dipasang Direktur PSP a.n Direktur Jenderal', async () => {
+  const { penandatangan: _, ...tanpaTtd } = contohSuratKeluar;
+  const xml = await docXml(await buildSuratKeluar(tanpaTtd));
+  for (const t of ['a.n Direktur Jenderal', 'Direktur Penanganan Sengketa Pertanahan,', 'I Made Daging, A.Ptnh., M.H.', 'NIP. 19690818 199103 1 004']) {
+    assert.ok(xml.includes(t), t);
+  }
+
+  // Alat buat_surat_keluar menerima data tanpa penandatangan dan menampilkan penanda tangan tetap saat minta persetujuan.
+  const { jalankanAlat } = require('../src/agent/alat');
+  let ringkasan = '';
+  const ctx = {
+    google: { drive: { getFolder: async id => ({ id, name: 'PT Cikarang Listrindo - Kabupaten Bekasi' }), listNames: async () => [], uploadFile: async () => ({ webViewLink: 'L' }) } },
+    kirimDokumen: async () => {},
+    mintaPersetujuan: async r => { ringkasan = r; return { setuju: true }; },
+  };
+  const r = await jalankanAlat(ctx, { name: 'buat_surat_keluar', input: { folder_id: 'F1', tujuan_singkat: 'Kantah Kab Bekasi', data: tanpaTtd } });
+  assert.ok(!r.is_error, r.content);
+  assert.match(ringkasan, /a\.n Direktur Jenderal \/ Direktur Penanganan Sengketa Pertanahan \/ I Made Daging/);
+  assert.match(JSON.parse(r.content).nama, /^Surat Keluar_Kantah Kab Bekasi_PT Cikarang Listrindo - Kabupaten Bekasi\.docx$/);
+});

@@ -16,6 +16,11 @@ const { formatNip } = require('./telaahan');
 const F = 'Bookman Old Style', S = 22, LS = 360;
 const J = AlignmentType.JUSTIFIED, C = AlignmentType.CENTER, L = AlignmentType.LEFT;
 const A4 = { width: 11906, height: 16838 };
+// Penanda tangan tetap Surat Keluar (keputusan pengguna): Direktur PSP atas nama Direktur Jenderal.
+const TTD_SURAT_KELUAR = {
+  atas_nama: 'a.n Direktur Jenderal', jabatan: 'Direktur Penanganan Sengketa Pertanahan',
+  nama: 'I Made Daging, A.Ptnh., M.H.', nip: '19690818 199103 1 004',
+};
 const ROMAWI = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 
 const r = (t, o = {}) => new TextRun({ text: t, font: F, size: S, ...o });
@@ -102,7 +107,7 @@ function buildNotaDinas(D) {
 
 // ---------------- Surat Keluar ----------------
 // D: { sifat, lampiran, hal, kepada, di, pembuka, butir[], penutup,
-//      penandatangan: {atas_nama?, jabatan, nama, nip}, tembusan[], nomor?, tanggal? }
+//      penandatangan?: {atas_nama?, jabatan, nama, nip} (bawaan TTD_SURAT_KELUAR), tembusan[], nomor?, tanggal? }
 function buildSuratKeluar(D) {
   const W = [1600, 250, 7902]; // lebar isi 9752 (A4 dikurangi margin 1,9 cm kiri-kanan)
   const s = { line: LS };
@@ -118,7 +123,7 @@ function buildSuratKeluar(D) {
   const nomor = kosong(D.nomor)
     ? [r(pola, { color: 'FFFFFF' }), r(' '.repeat(21), { color: 'FFFFFF' })]
     : [r(D.nomor), r(' '.repeat(Math.max(4, pola.length + 21 - String(D.nomor).length)))];
-  const p = D.penandatangan;
+  const p = D.penandatangan || TTD_SURAT_KELUAR;
   const ttd = (t, before = 0) => new Paragraph({ alignment: C, keepNext: true, keepLines: true, spacing: { before, line: LS }, children: [r(t)] });
   const jabatan = String(p.jabatan).trim().replace(/,?$/, ',');
 
@@ -149,4 +154,4 @@ function buildSuratKeluar(D) {
   ]);
 }
 
-module.exports = { buildNotaDinas, buildSuratKeluar };
+module.exports = { buildNotaDinas, buildSuratKeluar, TTD_SURAT_KELUAR };

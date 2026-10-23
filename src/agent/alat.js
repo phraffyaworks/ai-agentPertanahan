@@ -6,7 +6,7 @@ const { FIELDS, catatPengaduan, rencanaNama } = require('../pipeline/intake');
 const { uniqueName, sanitizeName, PERLU_CEK } = require('../util/naming');
 const { buildTelaahan } = require('../docs/telaahan');
 const { buildNotula } = require('../docs/notula');
-const { buildNotaDinas, buildSuratKeluar } = require('../docs/surat');
+const { buildNotaDinas, buildSuratKeluar, TTD_SURAT_KELUAR } = require('../docs/surat');
 
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const WIB = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'full', timeStyle: 'short' });
@@ -78,7 +78,7 @@ const NotaDinas = z.object({
 });
 const SuratKeluar = z.object({
   sifat: wajib, lampiran: wajib, hal: wajib, kepada: wajib, di: wajib, pembuka: wajib, butir: Butir, penutup: wajib,
-  penandatangan: Ttd.extend({ atas_nama: z.string().optional() }), tembusan: z.array(wajib),
+  penandatangan: Ttd.extend({ atas_nama: z.string().optional() }).optional(), tembusan: z.array(wajib),
   nomor: z.string().optional(), tanggal: z.string().optional(),
 });
 const BUTIR_SCHEMA = { type: 'array', description: 'Butir bernomor 1., 2., ...: teks biasa, atau {teks, huruf:[...]} untuk sub-butir a., b., ...', items: { anyOf: [{ type: 'string' }, { type: 'object', properties: { teks: { type: 'string' }, huruf: { type: 'array', items: { type: 'string' } } }, required: ['teks'] }] } };
@@ -104,18 +104,18 @@ const SURAT_KELUAR_SCHEMA = {
     di: str('Baris setelah "di -", mis. "Cikarang" atau "Tempat".'),
     pembuka: str('Paragraf pembuka "Sehubungan dengan ...".'), butir: BUTIR_SCHEMA,
     penutup: str('Mis. "Demikian disampaikan untuk dilaksanakan."'),
-    penandatangan: { type: 'object', properties: { atas_nama: str('Opsional, mis. "a.n Direktur Jenderal".'), ...TTD_PROPS }, required: ['jabatan', 'nama', 'nip'] },
-    tembusan: { type: 'array', items: { type: 'string' }, description: 'Boleh kosong. Dua atau lebih diberi nomor.' },
+    penandatangan: { type: 'object', description: 'JANGAN diisi: penanda tangan tetap "a.n Direktur Jenderal / Direktur Penanganan Sengketa Pertanahan / I Made Daging" dipasang otomatis. Isi hanya bila pengguna meminta penanda tangan lain.', properties: { atas_nama: str('Opsional, mis. "a.n Direktur Jenderal".'), ...TTD_PROPS }, required: ['jabatan', 'nama', 'nip'] },
+    tembusan: { type: 'array', items: { type: 'string' }, description: 'Dipilih dari Kepala Kantor Wilayah BPN Provinsi, Kepala Kantor Pertanahan, dan/atau Pengadu, kecuali tujuan surat. Dua atau lebih diberi nomor.' },
     ...OPSIONAL_NOMOR_TANGGAL,
   },
-  required: ['sifat', 'lampiran', 'hal', 'kepada', 'di', 'pembuka', 'butir', 'penutup', 'penandatangan', 'tembusan'],
+  required: ['sifat', 'lampiran', 'hal', 'kepada', 'di', 'pembuka', 'butir', 'penutup', 'tembusan'],
 };
 const TUJUAN_SINGKAT = str('Singkatan tujuan surat untuk nama file, mis. "Kantah Kab Bekasi", "Pengadu", "Sesditjen PHPT".');
 
 // Ringkasan persetujuan untuk Nota Dinas dan Surat Keluar.
 async function ringkasSurat(ctx, i, jenis) {
   const f = await namaFolder(ctx, i.folder_id);
-  const d = i.data, p = d.penandatangan;
+  const d = i.data, p = d.penandatangan || TTD_SURAT_KELUAR;
   return [`Membuat ${jenis} (.docx):`, `• Disimpan di folder "${f.name}" sebagai ${jenis}_${sanitizeName(i.tujuan_singkat)}_${f.name}.docx`,
     '• Dikirim juga ke chat ini', `• Yth.: ${d.kepada}`, `• Hal: ${d.hal}`,
     `• Penanda tangan: ${[p.atas_nama, p.jabatan, p.nama].filter(Boolean).join(' / ')}`,

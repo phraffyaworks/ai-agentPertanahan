@@ -52,6 +52,11 @@ Catatan jawaban pengguna yang menjadi aturan tetap agen. Bila skill lama (telaah
   - `Surat Keluar_<tujuan singkat>_<nama folder>.docx`
 - Nomor dan tanggal surat dikosongkan. Kata sambung di pergantian halaman diatur pengguna sendiri.
 - Penanda tangan: Direktur Penanganan Sengketa Pertanahan adalah I Made Daging, A.Ptnh., M.H.; Sekretaris Direktorat Jenderal Penanganan Sengketa dan Konflik Pertanahan adalah Lalu Harisandi, S.ST., M.H., QCRO.
+- Surat Keluar (sukel):
+  - Aturan penulisan sama dengan dokumen lain.
+  - Penanda tangan selalu Direktur Penanganan Sengketa Pertanahan atas nama Direktur Jenderal Penanganan Sengketa dan Konflik Pertanahan.
+  - Tembusan ke Kantor Wilayah BPN Provinsi, Kantor Pertanahan, dan/atau Pengadu.
+  - Tujuan sukel bergantung pada kasusnya dan disampaikan pengguna lewat Telegram.
 
 ## Lingkungan
 - Akses Google Drive & Sheets lewat Apps Script milik pengguna (docs/APPS-SCRIPT.md), karena tombol Publish app di Google Cloud tidak bisa dipakai dan status Testing membuat izin habis setiap 7 hari.
