@@ -55,7 +55,8 @@ Catatan jawaban pengguna yang menjadi aturan tetap agen. Bila skill lama (telaah
 - Surat Keluar (sukel):
   - Aturan penulisan sama dengan dokumen lain.
   - Penanda tangan selalu Direktur Penanganan Sengketa Pertanahan atas nama Direktur Jenderal Penanganan Sengketa dan Konflik Pertanahan.
-  - Tembusan ke Kantor Wilayah BPN Provinsi, Kantor Pertanahan, dan/atau Pengadu.
+  - Tembusan nomor 1 selalu Direktur Jenderal Penanganan Sengketa dan Konflik Pertanahan, lalu Kantor Wilayah BPN Provinsi, Kantor Pertanahan, dan/atau Pengadu.
+  - Baris atas nama ditulis "a.n Direktur Jenderal".
   - Tujuan sukel bergantung pada kasusnya dan disampaikan pengguna lewat Telegram.
 
 ## Lingkungan

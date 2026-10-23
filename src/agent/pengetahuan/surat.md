@@ -31,7 +31,7 @@ Surat Keluar selalu ditandatangani Direktur Penanganan Sengketa Pertanahan atas 
 Pengguna menyebut kasusnya, tujuan sukel, dan isi pokoknya (mis. hasil penelitian atau jawaban atas pengaduan) lewat Telegram. Tujuan sukel ditentukan pengguna per surat; bila belum disebut, tanyakan. Bagian lain disiapkan bot:
 1. **Data kasus** diambil dari Master Data (`lihat_master_data` dengan nama Pengadu): Nomor Surat, Tanggal Surat, Perihal, Pengadu (Prinsipal), Penerima Kuasa, dan Objek Permasalahan. Folder pengadu dari `lihat_folder`. Tanggal dd/mm/yyyy ditulis "24 April 2026". Bila Nomor Surat "-", bagian "Nomor ..." dihilangkan dari kalimat. Kolom yang kosong atau [PERLU CEK] ditanyakan, bukan dikarang. Pihak yang dituju surat pengaduan ("yang ditujukan kepada ...") tidak ada di Master Data: ambil dari PDF pengaduan bila tersedia di percakapan, atau tanyakan.
 2. **Letak objek** menentukan instansi daerah: Kantor Pertanahan sesuai kota/kabupaten letak objek, dan Kantor Wilayah sesuai provinsinya (dari kolom Objek Permasalahan atau nama folder), bukan alamat para pihak.
-3. **Tembusan** dipilih dari: Kepala Kantor Wilayah Badan Pertanahan Nasional Provinsi [provinsi]; Kepala Kantor Pertanahan [kota/kabupaten]; dan/atau Pengadu. Pihak yang menjadi tujuan surat tidak ditembuskan. Dalam draf, usulkan semua yang bukan tujuan, dengan urutan Kantor Wilayah, Kantor Pertanahan, Pengadu; pengguna yang menentukan akhirnya. Pengadu ditulis dengan nama Pengadu (Prinsipal) di Master Data; bila ada Penerima Kuasa, tanyakan apakah tembusan ditujukan kepada kuasanya.
+3. **Tembusan** nomor 1 selalu Direktur Jenderal Penanganan Sengketa dan Konflik Pertanahan (dipasang otomatis oleh alat). Berikutnya dipilih dari: Kepala Kantor Wilayah Badan Pertanahan Nasional Provinsi [provinsi]; Kepala Kantor Pertanahan [kota/kabupaten]; dan/atau Pengadu. Pihak yang menjadi tujuan surat tidak ditembuskan. Dalam draf, usulkan semua yang bukan tujuan, dengan urutan Kantor Wilayah, Kantor Pertanahan, Pengadu; pengguna yang menentukan akhirnya. Draf di chat tetap menampilkan Direktur Jenderal di nomor 1. Pengadu ditulis dengan nama Pengadu (Prinsipal) di Master Data; bila ada Penerima Kuasa, tanyakan apakah tembusan ditujukan kepada kuasanya.
 4. **Penanda tangan** tetap dan dipasang otomatis (lihat bagian Penanda tangan).
 5. Tampilkan draf lengkap, revisi sampai disetujui, lalu panggil `buat_surat_keluar`.
 
@@ -42,7 +42,7 @@ Format:
 - Pembuka: "Sehubungan dengan surat [pengaduan Pengadu / Saudara] Nomor ... tanggal ... perihal ... yang ditujukan kepada ..., bersama ini disampaikan hal-hal sebagai berikut:".
 - Butir diawali "Bahwa ..." dan diakhiri titik koma; butir terakhir diakhiri titik. Kepada Pengadu, Pengadu disebut "Saudara".
 - Penutup pada contoh: "Demikian disampaikan untuk dilaksanakan." (meminta tindakan, mis. kepada Kantor Pertanahan) atau "Demikian disampaikan untuk menjadi maklum." (pemberitahuan, mis. kepada Pengadu).
-- Tembusan bernomor, diakhiri titik koma, yang terakhir titik.
+- Tembusan bernomor, diakhiri titik koma, yang terakhir titik (dibuat otomatis).
 
 ## Penulisan
 - Bahasa Indonesia formal, tidak ambigu, nama dan nomor persis sesuai berkas. Data yang belum diketahui ditanyakan, bukan dikarang.

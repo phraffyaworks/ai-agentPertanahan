@@ -21,6 +21,8 @@ const TTD_SURAT_KELUAR = {
   atas_nama: 'a.n Direktur Jenderal', jabatan: 'Direktur Penanganan Sengketa Pertanahan',
   nama: 'I Made Daging, A.Ptnh., M.H.', nip: '19690818 199103 1 004',
 };
+// Tembusan Surat Keluar selalu dimulai dengan Direktur Jenderal (keputusan pengguna).
+const DIRJEN = 'Direktur Jenderal Penanganan Sengketa dan Konflik Pertanahan';
 const ROMAWI = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 
 const r = (t, o = {}) => new TextRun({ text: t, font: F, size: S, ...o });
@@ -62,6 +64,14 @@ function tembusan(daftar, judul, spacing) {
   if (!daftar || !daftar.length) return [];
   const p = (t, num) => new Paragraph({ alignment: num ? J : L, spacing, numbering: num ? { reference: 'tembusan', level: 0 } : undefined, children: runs(t) });
   return [p(judul), ...(daftar.length === 1 ? [p(daftar[0])] : daftar.map(t => p(t, true)))];
+}
+
+// Tembusan Surat Keluar: Direktur Jenderal di nomor 1 (tidak dobel), tiap butir diakhiri titik koma, yang terakhir titik.
+function tembusanSuratKeluar(daftar = []) {
+  const bersih = t => String(t).trim().replace(/[;.,\s]+$/, '');
+  const lain = daftar.map(bersih).filter(t => t && t.toLowerCase() !== DIRJEN.toLowerCase());
+  const semua = [DIRJEN, ...lain];
+  return semua.map((t, i) => `${t}${i === semua.length - 1 ? '.' : ';'}`);
 }
 
 const dokumen = (margin, children) => Packer.toBuffer(new Document({
@@ -107,7 +117,8 @@ function buildNotaDinas(D) {
 
 // ---------------- Surat Keluar ----------------
 // D: { sifat, lampiran, hal, kepada, di, pembuka, butir[], penutup,
-//      penandatangan?: {atas_nama?, jabatan, nama, nip} (bawaan TTD_SURAT_KELUAR), tembusan[], nomor?, tanggal? }
+//      penandatangan?: {atas_nama?, jabatan, nama, nip} (bawaan TTD_SURAT_KELUAR), tembusan[] (tanpa Direktur Jenderal),
+//      nomor?, tanggal? }
 function buildSuratKeluar(D) {
   const W = [1600, 250, 7902]; // lebar isi 9752 (A4 dikurangi margin 1,9 cm kiri-kanan)
   const s = { line: LS };
@@ -150,8 +161,8 @@ function buildSuratKeluar(D) {
       ]),
     ] })]),
     ...[1, 2, 3].map(() => new Paragraph({ spacing: s, children: [] })),
-    ...tembusan(D.tembusan, 'Tembusan:', s),
+    ...tembusan(tembusanSuratKeluar(D.tembusan), 'Tembusan:', s),
   ]);
 }
 
-module.exports = { buildNotaDinas, buildSuratKeluar, TTD_SURAT_KELUAR };
+module.exports = { buildNotaDinas, buildSuratKeluar, tembusanSuratKeluar, TTD_SURAT_KELUAR };

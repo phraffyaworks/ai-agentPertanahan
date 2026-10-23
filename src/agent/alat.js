@@ -105,7 +105,7 @@ const SURAT_KELUAR_SCHEMA = {
     pembuka: str('Paragraf pembuka "Sehubungan dengan ...".'), butir: BUTIR_SCHEMA,
     penutup: str('Mis. "Demikian disampaikan untuk dilaksanakan."'),
     penandatangan: { type: 'object', description: 'JANGAN diisi: penanda tangan tetap "a.n Direktur Jenderal / Direktur Penanganan Sengketa Pertanahan / I Made Daging" dipasang otomatis. Isi hanya bila pengguna meminta penanda tangan lain.', properties: { atas_nama: str('Opsional, mis. "a.n Direktur Jenderal".'), ...TTD_PROPS }, required: ['jabatan', 'nama', 'nip'] },
-    tembusan: { type: 'array', items: { type: 'string' }, description: 'Dipilih dari Kepala Kantor Wilayah BPN Provinsi, Kepala Kantor Pertanahan, dan/atau Pengadu, kecuali tujuan surat. Dua atau lebih diberi nomor.' },
+    tembusan: { type: 'array', items: { type: 'string' }, description: 'Dipilih dari Kepala Kantor Wilayah BPN Provinsi, Kepala Kantor Pertanahan, dan/atau Pengadu, kecuali tujuan surat. Direktur Jenderal Penanganan Sengketa dan Konflik Pertanahan dipasang otomatis di nomor 1; tanda baca akhir juga otomatis.' },
     ...OPSIONAL_NOMOR_TANGGAL,
   },
   required: ['sifat', 'lampiran', 'hal', 'kepada', 'di', 'pembuka', 'butir', 'penutup', 'tembusan'],

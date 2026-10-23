@@ -85,3 +85,15 @@ test('Surat Keluar: tanpa penanda tangan, dipasang Direktur PSP a.n Direktur Jen
   assert.match(ringkasan, /a\.n Direktur Jenderal \/ Direktur Penanganan Sengketa Pertanahan \/ I Made Daging/);
   assert.match(JSON.parse(r.content).nama, /^Surat Keluar_Kantah Kab Bekasi_PT Cikarang Listrindo - Kabupaten Bekasi\.docx$/);
 });
+
+test('Surat Keluar: tembusan selalu diawali Direktur Jenderal, tidak dobel, tanda baca otomatis', async () => {
+  const { tembusanSuratKeluar } = require('../src/docs/surat');
+  assert.deepStrictEqual(tembusanSuratKeluar(['Kepala Kantor Pertanahan Kabupaten Bekasi', 'PT. Cikarang Listrindo, Tbk.']), [
+    'Direktur Jenderal Penanganan Sengketa dan Konflik Pertanahan;', 'Kepala Kantor Pertanahan Kabupaten Bekasi;', 'PT. Cikarang Listrindo, Tbk.',
+  ]);
+  assert.deepStrictEqual(tembusanSuratKeluar(['Direktur Jenderal Penanganan Sengketa dan Konflik Pertanahan;', 'Kepala Kantor Wilayah Badan Pertanahan Nasional Provinsi Jawa Barat']), [
+    'Direktur Jenderal Penanganan Sengketa dan Konflik Pertanahan;', 'Kepala Kantor Wilayah Badan Pertanahan Nasional Provinsi Jawa Barat.',
+  ]);
+  const xml = await docXml(await buildSuratKeluar({ ...contohSuratKeluar, tembusan: ['Kepala Kantor Wilayah Badan Pertanahan Nasional Provinsi Jawa Barat'] }));
+  assert.ok(xml.indexOf('Direktur Jenderal Penanganan Sengketa dan Konflik Pertanahan;') < xml.indexOf('Provinsi Jawa Barat.'));
+});
