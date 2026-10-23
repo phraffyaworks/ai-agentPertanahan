@@ -45,6 +45,18 @@ test('Nota Dinas: format contoh pengguna (margin 2,54 cm, NIP bertitik, satu tem
   assert.strictEqual((xml.match(/<w:numPr>/g) || []).length, 6);
 });
 
+test('Nota Dinas: dua kali Enter (baris kosong) di atas judul agar tidak menimpa kop', async () => {
+  const xml = await docXml(await buildNotaDinas(contohNotaDinas));
+  const badan = xml.slice(xml.indexOf('<w:body>'));
+  const paragraf = badan.match(/<w:p>[\s\S]*?<\/w:p>|<w:p [\s\S]*?<\/w:p>/g);
+  const iJudul = paragraf.findIndex(p => p.includes('NOTA DINAS'));
+  assert.strictEqual(iJudul, 2, 'tepat dua paragraf kosong sebelum judul');
+  paragraf.slice(0, 2).forEach(p => assert.ok(!p.includes('<w:t'), 'paragraf kosong tanpa teks'));
+  assert.match(paragraf[0], /w:before="1240"/, 'jarak dasar 1240 twips (±4,7 cm) tetap di paragraf pertama');
+  assert.match(paragraf[1], /w:before="0"/);
+  assert.match(paragraf[2], /w:before="0"/, 'judul sendiri tidak lagi membawa jarak atas');
+});
+
 test('Surat Keluar: ruang kop 5,3 cm, nomor kosong berpola putih, NIP bertitik, tembusan bernomor', async () => {
   const xml = await docXml(await buildSuratKeluar(contohSuratKeluar));
   assert.match(xml, /w:top="3005"[^>]*w:right="1077"/);

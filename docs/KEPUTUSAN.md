@@ -47,6 +47,7 @@ Catatan jawaban pengguna yang menjadi aturan tetap agen. Bila skill lama (telaah
 - Huruf Bookman Old Style 10,5–11 pt (contoh memakai 11 pt, dan itu yang dipakai), paragraf rata kanan-kiri.
 - Awalan NIP diseragamkan menjadi `NIP.` (berspasi) di semua dokumen, termasuk Surat Keluar.
 - Margin bawah Nota Dinas 2,54 cm (bukan 0,25 cm seperti contoh).
+- Judul Nota Dinas diberi tambahan dua kali Enter (dua baris kosong berspasi 1,15) di atas jarak dasar ±4,7 cm, karena kop yang dipakai masih tertimpa judul (Oktober 2026). Jumlahnya diatur lewat `KOP_ENTER_NOTA_DINAS` di `src/docs/surat.js`.
 - Draf surat dikirim di chat sampai disetujui, baru dibuat .docx. File disimpan di folder pengadu dan dikirim ke Telegram:
   - `Nota Dinas_<tujuan singkat>_<nama folder>.docx`
   - `Surat Keluar_<tujuan singkat>_<nama folder>.docx`

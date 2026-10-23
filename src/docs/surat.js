@@ -2,7 +2,7 @@
 // Tata letak disalin dari contoh Word pengguna (Oktober 2026):
 // - Nota Dinas (dua nota terakhir pada contoh "Pelimpahan Berkas ke Sesdit PHPT"): A4, margin 2,54 cm
 //   (margin bawah contoh 0,25 cm tidak dipakai, keputusan pengguna), judul NOTA DINAS di
-//   ±4,7 cm dari atas, kepala nota Yth./Dari/Tanggal/Lampiran/Hal berspasi 1, garis di bawahnya, isi spasi 1,5.
+//   ±4,7 cm dari atas ditambah dua kali Enter agar tidak menimpa kop (keputusan pengguna), kepala nota Yth./Dari/Tanggal/Lampiran/Hal berspasi 1, garis di bawahnya, isi spasi 1,5.
 // - Surat Keluar (contoh "Kantah Kab Bekasi" dan "PT Cikarang Listrindo"): A4, margin kiri-kanan 1,9 cm,
 //   ruang kop 5,3 cm di setiap halaman, Nomor/Sifat/Lampiran/Hal, "Jakarta," sejajar Nomor, isi spasi 1,5.
 // Keduanya Bookman Old Style 11 pt, rata kanan-kiri, butir 1./a. otomatis, awalan "NIP." seperti dokumen
@@ -16,6 +16,8 @@ const { formatNip } = require('./telaahan');
 const F = 'Bookman Old Style', S = 22, LS = 360;
 const J = AlignmentType.JUSTIFIED, C = AlignmentType.CENTER, L = AlignmentType.LEFT;
 const A4 = { width: 11906, height: 16838 };
+// Tambahan jarak di atas judul Nota Dinas agar tidak menimpa kop (permintaan pengguna: 2 kali Enter).
+const KOP_ENTER_NOTA_DINAS = 2;
 // Penanda tangan tetap Surat Keluar (keputusan pengguna): Direktur PSP atas nama Direktur Jenderal.
 const TTD_SURAT_KELUAR = {
   atas_nama: 'a.n Direktur Jenderal', jabatan: 'Direktur Penanganan Sengketa Pertanahan',
@@ -96,7 +98,12 @@ function buildNotaDinas(D) {
   const p = D.penandatangan;
 
   return dokumen({ top: 1440, bottom: 1440, left: 1440, right: 1440 }, [
-    new Paragraph({ alignment: C, spacing: { before: 1240, after: 0, line: 240 }, children: [r('NOTA DINAS', { bold: true })] }),
+    // Ruang kop di atas judul: 1240 twips (±4,7 cm dari tepi atas, sesuai contoh) ditambah KOP_ENTER_NOTA_DINAS
+    // kali Enter, karena kop yang dipakai pengguna masih tertimpa judul. Satu Enter = satu baris kosong
+    // berspasi 1,15 seperti gaya Normal contoh. Bila masih kurang atau berlebih, ubah KOP_ENTER_NOTA_DINAS.
+    ...Array.from({ length: KOP_ENTER_NOTA_DINAS }, (_, i) =>
+      new Paragraph({ spacing: { before: i === 0 ? 1240 : 0, after: 0, line: 276 }, children: [] })),
+    new Paragraph({ alignment: C, spacing: { before: 0, after: 0, line: 240 }, children: [r('NOTA DINAS', { bold: true })] }),
     new Paragraph({ spacing: { after: 0 }, children: [r(`${' '.repeat(36)}Nomor :${kosong(D.nomor) ? '' : ` ${D.nomor}`}`)] }),
     new Paragraph({ spacing: { after: 0 }, children: [] }),
     table(W, [kv('Yth.', D.kepada), kv('Dari', D.dari), kv('Tanggal', D.tanggal), kv('Lampiran', D.lampiran), kv('Hal', D.hal)]),
