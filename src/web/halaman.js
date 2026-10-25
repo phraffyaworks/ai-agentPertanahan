@@ -45,16 +45,21 @@ th{font-size:.9rem;color:var(--pudar)}
 .gulir{overflow-x:auto}
 code,.kode{font-family:ui-monospace,Consolas,monospace;background:var(--info-bg);padding:2px 6px;border-radius:4px;word-break:break-all}
 .pudar{color:var(--pudar)}
+.kode-besar{font:700 2.2rem/1.2 ui-monospace,Consolas,monospace;letter-spacing:.3em;background:var(--info-bg);border-radius:10px;padding:12px 18px;display:inline-block;margin:8px 0}
+.bagian-langkah{counter-reset:l;list-style:none;padding:0}.bagian-langkah>li{counter-increment:l;position:relative;padding:0 0 20px 48px}
+.bagian-langkah>li::before{content:counter(l);position:absolute;left:0;top:0;width:32px;height:32px;border-radius:50%;background:var(--utama);color:var(--utama-teks);display:grid;place-items:center;font-weight:700}
+.bagian-langkah h3{margin:4px 0 6px;font-size:1.05rem}.bagian-langkah ol,.bagian-langkah ul{padding-left:20px;margin:6px 0}
+.catatan{border-left:4px solid var(--utama);background:var(--info-bg);padding:10px 14px;border-radius:6px;margin:10px 0}
 `;
 
-function tata({ judul, isi, akun = null, csrf = '', pesan = null }) {
+function tata({ judul, isi, akun = null, csrf = '', pesan = null, skrip = null }) {
   const menu = akun ? `<nav>
       ${akun.status === 'aktif' && !akun.perlu2fa ? '<a href="/mulai">Mulai</a> <a href="/profil">Profil</a>' : ''}
       ${akun.peran === 'admin' && akun.status === 'aktif' && !akun.perlu2fa ? '<a href="/admin">Super admin</a>' : ''}
       <form method="post" action="/keluar"><input type="hidden" name="_csrf" value="${e(csrf)}"><button type="submit">Keluar</button></form>
     </nav>` : '<nav><a href="/masuk">Masuk</a> <a href="/daftar">Daftar</a></nav>';
   return `<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${e(judul)} · Agen Pertanahan</title><style>${GAYA}</style></head><body>
+<title>${e(judul)} · Agen Pertanahan</title><style>${GAYA}</style>${skrip ? `<script src="${e(skrip)}" defer></script>` : ''}</head><body>
 <header><div class="atas"><a class="merek" href="/">Agen Pertanahan</a>${menu}</div></header>
 <main>${pesan ? `<div class="pemberitahuan ${e(pesan.jenis || 'info')}" role="status">${e(pesan.teks)}</div>` : ''}${isi}</main>
 </body></html>`;
@@ -216,6 +221,67 @@ function halamanAudit({ akun, csrf, daftar }) {
 <tbody>${baris || '<tr><td colspan="5">Belum ada catatan.</td></tr>'}</tbody></table></div>` });
 }
 
+
+// ---------- hubungkan Google ----------
+const tombolUI = (id, en) => `<strong>${e(id)}</strong>${en ? ` <span class="pudar">(${e(en)})</span>` : ''}`;
+
+function halamanGoogle({ akun, csrf, sambungan, kode, templateUrl, pesan }) {
+  if (sambungan) {
+    return tata({ judul: 'Google', akun, csrf, pesan, isi: `
+<h1>Google tersambung</h1>
+<div class="kartu">
+  <p><span class="lencana aktif">Tersambung</span> sejak ${fmtWaktu(sambungan.tersambung)}</p>
+  <p>Spreadsheet Master Data: <a href="https://docs.google.com/spreadsheets/d/${e(sambungan.spreadsheetId)}" target="_blank" rel="noopener">buka spreadsheet</a><br>
+     Folder pengaduan: <a href="https://drive.google.com/drive/folders/${e(sambungan.folderIndukId)}" target="_blank" rel="noopener">buka folder</a></p>
+  <form class="sebaris" method="post" action="/google/periksa">${csrfInput(csrf)}<button class="tombol kecil" type="submit">Periksa sambungan</button></form>
+  <form class="sebaris" method="post" action="/google/putus">${csrfInput(csrf)}<button class="tombol kecil kedua" type="submit">Putuskan sambungan</button></form>
+  <p class="pudar">Setelah memutuskan sambungan di sini, buka spreadsheet Anda, menu Agen Pertanahan &rarr; Putuskan sambungan, sebelum menyambungkan lagi.</p>
+</div>` });
+  }
+  if (!templateUrl) {
+    return tata({ judul: 'Google', akun, csrf, isi: `<div class="kartu sempit"><h1>Hubungkan Google</h1>
+      <div class="pemberitahuan info">Template belum disiapkan pengelola. Silakan coba lagi nanti.</div></div>` });
+  }
+  const jam = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }).format(new Date(kode.kedaluwarsa));
+  return tata({ judul: 'Hubungkan Google', akun, csrf, pesan, skrip: '/aset/tunggu-google.js', isi: `
+<h1>Hubungkan Google Drive dan Spreadsheet</h1>
+<p class="pudar">Sekitar 5 menit. Agen akan memakai Drive, Spreadsheet, Gmail, dan Kalender di akun Google Anda sendiri, dan selalu meminta persetujuan Anda sebelum mengubah apa pun.</p>
+<div class="catatan">Kerjakan di komputer, dengan akun Google yang ingin Anda pakai untuk pekerjaan ini. Biarkan halaman ini tetap terbuka; halaman akan berubah sendiri setelah tersambung.</div>
+<ol class="bagian-langkah kartu">
+  <li><h3>Salin template ke Drive Anda</h3>
+    <p>Klik tombol di bawah. Bila diminta, pilih akun Google yang benar (lihat foto profil di pojok kanan atas), lalu klik ${tombolUI('Buat salinan', 'Make a copy')}.</p>
+    <a class="tombol kecil" href="${e(templateUrl)}" target="_blank" rel="noopener">Salin template</a>
+    <p class="pudar">Hasilnya: spreadsheet baru di Drive Anda, lengkap dengan skrip penghubungnya.</p></li>
+  <li><h3>Buka skripnya</h3>
+    <p>Di spreadsheet salinan, klik menu ${tombolUI('Ekstensi', 'Extensions')} &rarr; ${tombolUI('Apps Script')}. Jendela baru terbuka.</p></li>
+  <li><h3>Terapkan sebagai aplikasi web</h3>
+    <ol>
+      <li>Klik tombol biru ${tombolUI('Terapkan', 'Deploy')} di kanan atas &rarr; ${tombolUI('Deployment baru', 'New deployment')}.</li>
+      <li>Klik ikon roda gigi di samping ${tombolUI('Pilih jenis', 'Select type')} &rarr; ${tombolUI('Aplikasi web', 'Web app')}.</li>
+      <li>Periksa dua isian ini:
+        <ul><li>${tombolUI('Jalankan sebagai', 'Execute as')}: <strong>Saya</strong> (email Anda)</li>
+            <li>${tombolUI('Yang memiliki akses', 'Who has access')}: <strong>Siapa saja</strong> (Anyone)</li></ul></li>
+      <li>Klik ${tombolUI('Terapkan', 'Deploy')}.</li>
+    </ol></li>
+  <li><h3>Beri izin</h3>
+    <ol>
+      <li>Klik ${tombolUI('Otorisasi akses', 'Authorize access')}, lalu pilih akun Google Anda.</li>
+      <li>Muncul peringatan <em>&ldquo;Google belum memverifikasi aplikasi ini&rdquo;</em>. Ini wajar, karena skripnya milik Anda sendiri. Klik ${tombolUI('Lanjutan', 'Advanced')} &rarr; ${tombolUI('Buka … (tidak aman)', 'Go to … (unsafe)')}.</li>
+      <li>Klik ${tombolUI('Izinkan', 'Allow')}.</li>
+    </ol></li>
+  <li><h3>Ketik kode ini</h3>
+    <p>Di jendela Apps Script, klik tautan di bawah tulisan ${tombolUI('Aplikasi web', 'Web app')} (berakhiran <span class="kode">/exec</span>). Halaman &ldquo;Sambungkan ke Agen Pertanahan&rdquo; terbuka. Ketik kode ini, lalu klik ${tombolUI('Sambungkan')}:</p>
+    <div class="kode-besar" aria-label="Kode ${e(kode.kode.split('').join(' '))}">${e(kode.kode)}</div>
+    <p class="pudar">Berlaku sampai pukul ${e(jam)} WIB. Muat ulang halaman ini bila sudah lewat.</p></li>
+</ol>
+<div class="kartu"><h2>Bila ada yang tidak berhasil</h2><ul>
+  <li><strong>Tombol Terapkan tidak ada:</strong> pastikan Anda membuka Apps Script dari menu Ekstensi di spreadsheet <em>salinan</em>, bukan template.</li>
+  <li><strong>Halaman Web App meminta masuk Google atau menolak akses:</strong> isian &ldquo;Yang memiliki akses&rdquo; belum &ldquo;Siapa saja&rdquo;. Ulangi langkah 3 dengan ${tombolUI('Terapkan', 'Deploy')} &rarr; ${tombolUI('Kelola deployment', 'Manage deployments')}, ubah isiannya, lalu simpan.</li>
+  <li><strong>Pesan &ldquo;kode salah atau kedaluwarsa&rdquo;:</strong> muat ulang halaman ini dan ketik kode yang baru.</li>
+  <li>Pesan lain dari halaman Web App sudah menyebut penyebab dan langkah perbaikannya.</li>
+</ul></div>` });
+}
+
 const halamanGalat = ({ judul, teks, akun = null, csrf = '' }) => tata({ judul, akun, csrf, isi: `<div class="kartu sempit"><h1>${e(judul)}</h1><p>${e(teks)}</p><p><a href="/">Kembali ke beranda</a></p></div>` });
 
 // Hash gaya untuk Content-Security-Policy (style-src) tanpa 'unsafe-inline'.
@@ -224,5 +290,5 @@ const HASH_GAYA = `'sha256-${require('crypto').createHash('sha256').update(GAYA)
 module.exports = {
   e, tata, HASH_GAYA, kolom, KOLOM_PROFIL,
   halamanDaftar, halamanMasuk, halamanKode2fa, halamanStatus, halamanMulai, halamanProfil,
-  halamanAdminPengguna, halamanAdmin2fa, halamanAudit, halamanGalat,
+  halamanAdminPengguna, halamanAdmin2fa, halamanAudit, halamanGalat, halamanGoogle,
 };

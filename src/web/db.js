@@ -163,6 +163,7 @@ function createDb(file) {
       q('INSERT INTO kode_pasang (jenis, kode_hash, pengguna_id, kedaluwarsa) VALUES (?, ?, ?, ?)')
         .run(jenis, kode_hash, pengguna_id, now() + umurMs);
     },
+    cek: (jenis, kode_hash) => q('SELECT * FROM kode_pasang WHERE jenis = ? AND kode_hash = ? AND dipakai IS NULL AND kedaluwarsa > ?').get(jenis, kode_hash, now()),
     // Mengambil dan menandai kode terpakai dalam satu langkah; kode hanya berlaku sekali.
     pakai: (jenis, kode_hash) => {
       const r = q('SELECT * FROM kode_pasang WHERE jenis = ? AND kode_hash = ? AND dipakai IS NULL AND kedaluwarsa > ?').get(jenis, kode_hash, now());
@@ -170,6 +171,17 @@ function createDb(file) {
       q('UPDATE kode_pasang SET dipakai = ? WHERE jenis = ? AND kode_hash = ?').run(now(), jenis, kode_hash);
       return r;
     },
+  };
+
+  // Sambungan Google per pengguna. URL dan kode rahasia disimpan terenkripsi oleh pemanggil.
+  const google = {
+    ambil: pengguna_id => q('SELECT * FROM google WHERE pengguna_id = ?').get(pengguna_id),
+    simpan: g => q(`INSERT INTO google (pengguna_id, url_enc, rahasia_enc, folder_induk_id, spreadsheet_id, sheet_master, tersambung)
+        VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(pengguna_id) DO UPDATE SET url_enc = excluded.url_enc,
+        rahasia_enc = excluded.rahasia_enc, folder_induk_id = excluded.folder_induk_id, spreadsheet_id = excluded.spreadsheet_id,
+        sheet_master = excluded.sheet_master, tersambung = excluded.tersambung`)
+      .run(g.pengguna_id, g.url_enc, g.rahasia_enc, g.folder_induk_id, g.spreadsheet_id, g.sheet_master || 'Master Data', now()),
+    hapus: pengguna_id => q('DELETE FROM google WHERE pengguna_id = ?').run(pengguna_id),
   };
 
   const pemakaian = {
@@ -196,7 +208,7 @@ function createDb(file) {
         ORDER BY a.id DESC LIMIT ?`).all(batas),
   };
 
-  return { db, pengguna, sesi, profil, kodePasang, pemakaian, audit, tutup: () => db.close() };
+  return { db, pengguna, sesi, profil, kodePasang, google, pemakaian, audit, tutup: () => db.close() };
 }
 
 module.exports = { createDb, STATUS };

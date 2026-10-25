@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<base target="_top">
+<style>
+  body { font: 16px/1.55 Arial, sans-serif; color: #1d232b; background: #f6f7f9; margin: 0; }
+  .kartu { max-width: 440px; margin: 32px auto; background: #fff; border: 1px solid #d9dde3; border-radius: 10px; padding: 24px; }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  label { display: block; font-weight: bold; margin: 18px 0 6px; }
+  input { width: 100%; box-sizing: border-box; font-size: 28px; letter-spacing: 8px; text-align: center; padding: 10px; border: 1px solid #b8c0cc; border-radius: 8px; }
+  button { margin-top: 18px; width: 100%; background: #1f5fbf; color: #fff; border: 0; border-radius: 8px; padding: 14px; font-size: 17px; font-weight: bold; cursor: pointer; }
+  button:disabled { background: #8aa6d6; cursor: wait; }
+  .pesan { border-radius: 8px; padding: 12px 14px; margin-top: 16px; display: none; }
+  .baik { background: #e7f5ec; color: #1c7c3c; display: block; }
+  .buruk { background: #fdecea; color: #b3261e; display: block; }
+  .pudar { color: #5b6573; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="kartu">
+  <h1>Sambungkan ke Agen Pertanahan</h1>
+  <? if (tersambung) { ?>
+    <div class="pesan baik">Skrip ini sudah tersambung ke dashboard. Anda bisa menutup halaman ini.</div>
+    <p class="pudar">Ingin menyambungkan ulang? Buka spreadsheet Anda, menu <b>Agen Pertanahan</b> &rarr; <b>Putuskan sambungan</b>, lalu buka halaman ini lagi.</p>
+  <? } else { ?>
+    <p>Buka dashboard, menu <b>Mulai</b> &rarr; <b>Hubungkan Google</b>. Di sana tertulis kode 6 angka. Ketik kode itu di bawah.</p>
+    <label for="kode">Kode 6 angka dari dashboard</label>
+    <input id="kode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+    <button id="tombol" onclick="kirim()">Sambungkan</button>
+    <div id="pesan" class="pesan" role="status"></div>
+    <p class="pudar">Dashboard: <?= dashboard ?></p>
+  <? } ?>
+</div>
+<script>
+  function tampil(jenis, teks) { var p = document.getElementById('pesan'); p.className = 'pesan ' + jenis; p.textContent = teks; }
+  function kirim() {
+    var kode = document.getElementById('kode').value.replace(/\s/g, '');
+    if (!/^\d{6}$/.test(kode)) { tampil('buruk', 'Kode harus 6 angka.'); return; }
+    var t = document.getElementById('tombol');
+    t.disabled = true; t.textContent = 'Menyambungkan...';
+    google.script.run
+      .withSuccessHandler(function (r) {
+        t.textContent = 'Tersambung';
+        tampil('baik', 'Berhasil. Google Anda sudah tersambung' + (r.nama ? ' ke akun ' + r.nama : '') +
+          '. Folder "' + r.folder + '" dan tab Master Data sudah siap. Kembali ke dashboard; halamannya akan berubah sendiri.');
+      })
+      .withFailureHandler(function (err) {
+        t.disabled = false; t.textContent = 'Sambungkan';
+        tampil('buruk', (err && err.message) || String(err));
+      })
+      .pasang(kode);
+  }
+</script>
+</body>
+</html>

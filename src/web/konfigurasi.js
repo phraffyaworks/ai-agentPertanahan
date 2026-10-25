@@ -20,6 +20,8 @@ function muatKonfigurasiWeb() {
     // Caddy berjalan di server yang sama, jadi hanya 127.0.0.1 yang dipercaya sebagai proksi.
     percayaProksi: '127.0.0.1',
     kunciUtama: kunciUtama(ambil('APP_MASTER_KEY', '')),
+    // ID spreadsheet template (berisi skrip apps-script/template) yang dibagikan "siapa saja yang memiliki link".
+    templateGoogleId: ambil('GOOGLE_TEMPLATE_ID', ''),
   };
 }
 

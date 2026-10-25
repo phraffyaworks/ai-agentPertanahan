@@ -4,19 +4,22 @@ const Fastify = require('fastify');
 const K = require('./keamanan');
 const H = require('./halaman');
 const { validasiProfil } = require('./profil');
+const { buatLayananGoogle } = require('./google');
 
 const UMUR_SESI = { pengguna: 7 * 24 * 3600e3, admin: 12 * 3600e3 };
 const BATAS_GAGAL = 5, KUNCI_MS = 15 * 60e3;
 const UMUR_PRA2FA = 5 * 60e3;
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function buatAplikasi({ db, konfigurasi, log = false }) {
+function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle }) {
   const aman = konfigurasi.cookieAman;
   const NAMA_SESI = aman ? '__Host-sid' : 'sid';
   const opsiCookie = (umurMs) => ({ path: '/', httpOnly: true, sameSite: 'lax', secure: aman, ...(umurMs ? { maxAge: Math.floor(umurMs / 1000) } : {}) });
   const kunci = konfigurasi.kunciUtama;
   const pra2fa = new Map();      // token -> { pengguna_id, kedaluwarsa, percobaan }
   const siapkan2fa = new Map();  // id_hash sesi -> rahasia TOTP sementara
+  const google = buatLayananGoogle({ db, kunci, ...(buatKlienGoogle ? { buatKlien: buatKlienGoogle } : {}) });
+  const templateUrl = konfigurasi.templateGoogleId ? `https://docs.google.com/spreadsheets/d/${konfigurasi.templateGoogleId}/copy` : null;
 
   const app = Fastify({ logger: log, trustProxy: konfigurasi.percayaProksi, bodyLimit: 1024 * 1024 });
   app.register(require('@fastify/cookie'));
@@ -25,7 +28,7 @@ function buatAplikasi({ db, konfigurasi, log = false }) {
 
   // Header keamanan untuk setiap respons.
   app.addHook('onSend', async (req, reply, payload) => {
-    reply.header('Content-Security-Policy', `default-src 'none'; style-src ${H.HASH_GAYA}; img-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`);
+    reply.header('Content-Security-Policy', `default-src 'none'; style-src ${H.HASH_GAYA}; script-src 'self'; connect-src 'self'; img-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`);
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('Referrer-Policy', 'same-origin');
     reply.header('X-Frame-Options', 'DENY');
@@ -58,7 +61,7 @@ function buatAplikasi({ db, konfigurasi, log = false }) {
   }
   const csrfOf = (req, reply) => (req.akun ? req.akun.csrf : csrfPra(req, reply));
   app.addHook('preHandler', async (req, reply) => {
-    if (req.method !== 'POST') return;
+    if (req.method !== 'POST' || req.routeOptions.config?.tanpaCsrf) return;
     const kiriman = (req.body && req.body._csrf) || req.headers['x-csrf-token'] || '';
     const harap = req.akun ? req.akun.csrf : req.cookies.csrf_pra;
     if (!harap || !K.samaAman(kiriman, harap)) {
@@ -185,7 +188,7 @@ function buatAplikasi({ db, konfigurasi, log = false }) {
     const langkah = [
       { judul: 'Akun disetujui', keterangan: 'Akun Anda sudah aktif.', selesai: true },
       { judul: 'Isi profil penanda tangan', keterangan: 'Nama dan NIP yang akan tercetak di Telaahan Staf, Notula, dan surat.', selesai: !!db.profil.ambil(id), tautan: '/profil', tombol: 'Isi profil' },
-      { judul: 'Hubungkan Google Drive dan Spreadsheet', keterangan: 'Supaya agen bisa menyimpan berkas dan mencatat Master Data di akun Google Anda sendiri.', selesai: false, segera: true },
+      { judul: 'Hubungkan Google Drive dan Spreadsheet', keterangan: 'Supaya agen bisa menyimpan berkas dan mencatat Master Data di akun Google Anda sendiri.', selesai: !!db.google.ambil(id), tautan: '/google', tombol: 'Hubungkan Google' },
       { judul: 'Hubungkan Telegram', keterangan: 'Supaya Anda juga bisa memakai agen lewat Telegram.', selesai: false, segera: true },
       { judul: 'Pilih model AI', keterangan: 'Sementara memakai Claude Sonnet 5.5. Pilihan model lain menyusul.', selesai: true },
       { judul: 'Uji coba', keterangan: 'Kirim PDF contoh untuk memastikan semuanya tersambung.', selesai: false, segera: true },
@@ -203,6 +206,42 @@ function buatAplikasi({ db, konfigurasi, log = false }) {
     catat(req, 'profil_disimpan');
     return kirim(reply, H.halamanProfil({ akun: req.akun, csrf: req.akun.csrf, nilai: data, pesan: { jenis: 'baik', teks: 'Profil tersimpan.' } }));
   });
+
+
+  // ---------- hubungkan Google ----------
+  const halGoogle = (req, pesan = null, kode = 200) => {
+    const id = req.akun.pengguna_id;
+    const s = db.google.ambil(id) ? google.sambungan(id) : null;
+    return { kode, html: H.halamanGoogle({ akun: req.akun, csrf: req.akun.csrf, sambungan: s, templateUrl, pesan,
+      kode: s || !templateUrl ? null : google.kodeUntuk(id) }) };
+  };
+  app.get('/google', { preHandler: perluAktif }, async (req, reply) => { const h = halGoogle(req); return kirim(reply, h.html, h.kode); });
+  app.get('/google/status', { preHandler: perluAktif }, async req => ({ tersambung: !!db.google.ambil(req.akun.pengguna_id) }));
+  app.post('/google/periksa', { preHandler: perluAktif }, async (req, reply) => {
+    const s = google.sambungan(req.akun.pengguna_id);
+    if (!s) return reply.redirect('/google', 303);
+    try {
+      const r = await google.periksa(s);
+      const h = halGoogle(req, { jenis: 'baik', teks: `Sambungan baik. Akun Google: ${r.akun}.` });
+      return kirim(reply, h.html);
+    } catch (err) {
+      const h = halGoogle(req, { jenis: 'buruk', teks: err.message });
+      return kirim(reply, h.html);
+    }
+  });
+  app.post('/google/putus', { preHandler: perluAktif }, async (req, reply) => {
+    db.google.hapus(req.akun.pengguna_id);
+    catat(req, 'google_diputus');
+    const h = halGoogle(req, { jenis: 'info', teks: 'Sambungan Google diputus. Untuk menyambungkan lagi, buka spreadsheet Anda, menu Agen Pertanahan → Putuskan sambungan, lalu ikuti langkah di bawah.' });
+    return kirim(reply, h.html);
+  });
+  // Dipanggil skrip Apps Script milik pengguna (bukan peramban), jadi tanpa cookie dan tanpa CSRF.
+  app.post('/api/google/pasang', { config: { tanpaCsrf: true, rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const r = await google.terimaPasangan(req.body || {});
+    return reply.code(r.status).send(r.isi);
+  });
+  app.get('/aset/tunggu-google.js', async (req, reply) => reply.type('application/javascript; charset=utf-8').header('Cache-Control', 'public, max-age=3600').send(
+    "(function(){var t=setInterval(function(){fetch('/google/status',{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(j){if(j.tersambung){clearInterval(t);location.reload()}}).catch(function(){})},4000)})();"));
 
   // ---------- super admin ----------
   app.get('/admin', { preHandler: perluAdmin }, async (req, reply) => reply.redirect('/admin/pengguna'));

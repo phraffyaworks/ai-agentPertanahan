@@ -192,3 +192,88 @@ test('tampilan: teks pengguna di-escape dan header keamanan terpasang', async ()
   assert.match(String(r.headers['set-cookie'] || '') + Object.keys(u.jar).join(','), /sid/);
   await app.close();
 });
+
+// ---------- penyambungan Google ----------
+const fs = require('fs');
+const { HEADER } = require('../src/google/sheets');
+
+function skripTiruan({ versi = '3', header = HEADER } = {}) {
+  const terdaftar = new Map(); // url -> rahasia
+  const buatKlien = ({ url, secret }) => ({
+    call: async (action) => {
+      if (terdaftar.get(url) !== secret) throw new Error('Apps Script: Kode rahasia salah.');
+      if (action === 'ping') return { versi, akun: 'budi.uji@gmail.com' };
+      if (action === 'header') return header;
+      throw new Error(`aksi ${action} tidak ditiru`);
+    },
+  });
+  return { terdaftar, buatKlien };
+}
+
+async function penggunaAktifDenganGoogle(opsi = {}) {
+  const db = createDb(':memory:');
+  const tiruan = skripTiruan(opsi);
+  const app = buatAplikasi({ db, konfigurasi: { ...konfigurasi, templateGoogleId: 'TEMPLATE_ID_UJI_1234567890' }, buatKlienGoogle: tiruan.buatKlien });
+  const id = db.pengguna.buat({ email: 'g@contoh.id', nama: 'Gita', unit_kerja: 'U', sandi_hash: K.hashSandi('sandi pengguna g'), status: 'aktif' });
+  const u = peramban(app);
+  await u.get('/masuk');
+  await u.post('/masuk', { email: 'g@contoh.id', sandi: 'sandi pengguna g' });
+  const hal = await u.get('/google');
+  const kode = /<div class="kode-besar"[^>]*>(\d{6})<\/div>/.exec(hal.body)[1];
+  const url = 'https://script.google.com/macros/s/AKfycbUjiCobaPenyambunganGoogle1234/exec';
+  const rahasia = 'r'.repeat(64);
+  tiruan.terdaftar.set(url, rahasia);
+  const kirimPasangan = isi => app.inject({ method: 'POST', url: '/api/google/pasang', payload: {
+    kode, url, rahasia, spreadsheetId: 'SPREADSHEET_ID_UJI_123456789', folderId: 'FOLDER_ID_UJI_1234567890', sheet: 'Master Data', ...isi } });
+  return { db, app, u, id, kode, url, hal, kirimPasangan };
+}
+
+test('Google: halaman menampilkan kode 6 angka dan tautan salin template', async () => {
+  const { app, hal, u, kode } = await penggunaAktifDenganGoogle();
+  assert.match(hal.body, /https:\/\/docs\.google\.com\/spreadsheets\/d\/TEMPLATE_ID_UJI_1234567890\/copy/);
+  assert.match(hal.body, /Yang memiliki akses/);
+  // Memuat ulang halaman tidak mengganti kode yang masih berlaku.
+  assert.ok((await u.get('/google')).body.includes(`>${kode}</div>`));
+  assert.deepStrictEqual(JSON.parse((await u.get('/google/status')).body), { tersambung: false });
+  await app.close();
+});
+
+test('Google: pasangan dari skrip diterima, diperiksa balik, dan disimpan terenkripsi', async () => {
+  const { db, app, u, id, url, kirimPasangan } = await penggunaAktifDenganGoogle();
+  assert.strictEqual((await kirimPasangan({ kode: '000000' })).statusCode, 400);
+  const r = await kirimPasangan();
+  assert.strictEqual(r.statusCode, 200, r.body);
+  assert.deepStrictEqual(JSON.parse(r.body), { ok: true, nama: 'Gita' });
+  const g = db.google.ambil(id);
+  assert.ok(g && !g.url_enc.includes('script.google.com') && !g.rahasia_enc.includes('rrrr'));
+  assert.strictEqual(g.spreadsheet_id, 'SPREADSHEET_ID_UJI_123456789');
+  assert.deepStrictEqual(JSON.parse((await u.get('/google/status')).body), { tersambung: true });
+  assert.match((await u.get('/google')).body, /Google tersambung/);
+  assert.match((await u.get('/mulai')).body, /Hubungkan Google Drive dan Spreadsheet<\/strong> <span class="lencana aktif">Selesai/);
+  // Kode hanya berlaku sekali.
+  assert.strictEqual((await kirimPasangan()).statusCode, 400);
+  assert.match((await u.post('/google/periksa')).body, /Sambungan baik\. Akun Google: budi\.uji@gmail\.com/);
+  assert.ok(db.audit.terbaru().some(a => a.aksi === 'google_tersambung'));
+  assert.strictEqual(url.endsWith('/exec'), true);
+  await app.close();
+});
+
+test('Google: skrip versi lama, judul kolom berubah, atau alamat /dev ditolak dengan pesan yang jelas', async () => {
+  let t = await penggunaAktifDenganGoogle({ versi: '2' });
+  assert.match(JSON.parse((await t.kirimPasangan()).body).pesan, /Versi skrip 2, padahal yang dibutuhkan versi 3/);
+  await t.app.close();
+  t = await penggunaAktifDenganGoogle({ header: HEADER.map((h, i) => (i === 6 ? 'No Surat' : h)) });
+  assert.match(JSON.parse((await t.kirimPasangan()).body).pesan, /kolom G \(seharusnya "Nomor Surat"\)/);
+  assert.strictEqual(t.db.google.ambil(t.id), undefined);
+  await t.app.close();
+  t = await penggunaAktifDenganGoogle();
+  assert.match(JSON.parse((await t.kirimPasangan({ url: 'https://script.google.com/macros/s/AKfycbUjiCobaPenyambunganGoogle1234/dev' })).body).pesan, /berakhiran \/exec/);
+  await t.app.close();
+});
+
+test('Google: judul kolom di template Apps Script sama dengan Master Data', () => {
+  const kodeGs = fs.readFileSync(require('path').join(__dirname, '..', 'apps-script', 'template', 'Kode.gs'), 'utf8');
+  const daftar = /var HEADER = \[([\s\S]*?)\];/.exec(kodeGs)[1].match(/'([^']+)'/g).map(s => s.slice(1, -1));
+  assert.deepStrictEqual(daftar, HEADER);
+  assert.match(kodeGs, /var VERSI = '3';/);
+});
