@@ -7,16 +7,24 @@
     "start": "node src/index.js",
     "cek": "node scripts/cek-koneksi.js",
     "authorize-google": "node scripts/authorize-google.js",
-    "test": "node --test test/*.test.js",
-    "setup": "node scripts/setup.js"
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js",
+    "setup": "node scripts/setup.js",
+    "web": "node --disable-warning=ExperimentalWarning src/web/index.js",
+    "buat-admin": "node --disable-warning=ExperimentalWarning scripts/buat-admin.js"
   },
   "license": "UNLICENSED",
   "dependencies": {
     "@anthropic-ai/sdk": "0.135.0",
+    "@fastify/cookie": "11.1.3",
+    "@fastify/formbody": "9.0.1",
+    "@fastify/multipart": "10.1.3",
+    "@fastify/rate-limit": "11.2.1",
+    "@fastify/static": "10.1.6",
     "@googleapis/drive": "26.0.2",
     "@googleapis/sheets": "18.1.1",
     "docx": "9.6.1",
     "dotenv": "17.4.2",
+    "fastify": "5.12.6",
     "google-auth-library": "11.3.1",
     "grammy": "1.46.0",
     "zod": "4.6.7"
