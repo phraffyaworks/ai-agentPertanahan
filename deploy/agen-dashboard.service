@@ -1,0 +1,18 @@
+# Layanan systemd dashboard web (versi 2). Berjalan di samping bot versi 1 (agen-pertanahan) tanpa mengganggunya.
+[Unit]
+Description=Dashboard Agen Pertanahan (web)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=agen
+WorkingDirectory=/home/agen/agen-dashboard
+ExecStart=/usr/bin/env node --disable-warning=ExperimentalWarning src/web/index.js
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

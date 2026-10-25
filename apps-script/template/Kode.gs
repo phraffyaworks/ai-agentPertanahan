@@ -8,11 +8,11 @@
  * Penyambungan: buka tautan Web App, lalu ketik kode 6 angka dari dashboard. Kode rahasia dibuat
  * otomatis dan dikirim langsung ke dashboard, jadi pengguna tidak perlu menyalin apa pun.
  *
- * Jangan ubah isi file ini, kecuali DASHBOARD saat membuat template (docs/TEMPLATE-GOOGLE.md).
+ * Jangan ubah isi file ini, kecuali DASHBOARD bila dashboard memakai alamat lain (docs/TEMPLATE-GOOGLE.md).
  */
 
-// Alamat dashboard. Diisi sekali oleh pengelola saat membuat template.
-var DASHBOARD = 'https://GANTI-DENGAN-ALAMAT-DASHBOARD';
+// Alamat dashboard, tanpa garis miring di akhir.
+var DASHBOARD = 'https://agen.phraffyaworks.tech';
 
 var VERSI = '3';
 var PROP_KODE = 'KODE_RAHASIA';

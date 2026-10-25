@@ -17,7 +17,7 @@ Waktu: sekitar 10 menit. Kerjakan di komputer.
 3. Isi file `Kode.gs`:
    - Klik file **Kode.gs** di panel kiri, lalu hapus semua isinya.
    - Buka [Kode.gs di GitHub](https://github.com/phraffyaworks/ai-agentPertanahan/blob/v2-dashboard/apps-script/template/Kode.gs), klik tombol **Copy raw file**, lalu tempel ke editor.
-   - Cari baris `var DASHBOARD = 'https://GANTI-DENGAN-ALAMAT-DASHBOARD';`. Ganti alamatnya dengan alamat dashboard Anda, misalnya `https://agen.domainanda.id`. Jangan beri garis miring di akhir.
+   - Periksa baris `var DASHBOARD = 'https://agen.phraffyaworks.tech';`. Biarkan bila dashboard memakai alamat itu. Bila memakai alamat lain, ganti alamatnya, tanpa garis miring di akhir.
 4. Tambah file `Pasang`:
    - Klik tanda **+** di samping **File** → **HTML**.
    - Beri nama `Pasang` (tanpa `.html`), hapus isinya, lalu tempel isi [Pasang.html](https://github.com/phraffyaworks/ai-agentPertanahan/blob/v2-dashboard/apps-script/template/Pasang.html).
