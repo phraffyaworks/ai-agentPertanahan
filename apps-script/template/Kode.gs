@@ -156,6 +156,13 @@ var AKSI_ = {
     return { versi: VERSI, akun: Session.getEffectiveUser().getEmail() };
   },
 
+  // Dipanggil tombol "Putuskan sambungan" di dashboard: kode rahasia dihapus, sehingga skrip siap
+  // disambungkan lagi cukup dengan kode 6 angka baru.
+  putus: function () {
+    PropertiesService.getScriptProperties().deleteProperty(PROP_KODE);
+    return true;
+  },
+
   // Membaca baris judul tab Master Data, untuk diperiksa dashboard.
   header: function (p) {
     var sh = lembar_(p);

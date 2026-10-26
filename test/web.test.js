@@ -204,6 +204,7 @@ function skripTiruan({ versi = '3', header = HEADER } = {}) {
       if (terdaftar.get(url) !== secret) throw new Error('Apps Script: Kode rahasia salah.');
       if (action === 'ping') return { versi, akun: 'budi.uji@gmail.com' };
       if (action === 'header') return header;
+      if (action === 'putus') { terdaftar.delete(url); return true; }
       throw new Error(`aksi ${action} tidak ditiru`);
     },
   });
@@ -254,6 +255,12 @@ test('Google: pasangan dari skrip diterima, diperiksa balik, dan disimpan terenk
   assert.strictEqual((await kirimPasangan()).statusCode, 400);
   assert.match((await u.post('/google/periksa')).body, /Sambungan baik\. Akun Google: budi\.uji@gmail\.com/);
   assert.ok(db.audit.terbaru().some(a => a.aksi === 'google_tersambung'));
+  // Putuskan: skrip ikut dihapus kode rahasianya, lalu bisa disambungkan lagi dengan kode baru.
+  const putus = await u.post('/google/putus');
+  assert.match(putus.body, /Sambungan Google diputus\. Untuk menyambungkan lagi/);
+  assert.strictEqual(db.google.ambil(id), undefined);
+  const kodeBaru = /<div class="kode-besar"[^>]*>(\d{6})<\/div>/.exec(putus.body)[1];
+  assert.ok(kodeBaru);
   assert.strictEqual(url.endsWith('/exec'), true);
   await app.close();
 });

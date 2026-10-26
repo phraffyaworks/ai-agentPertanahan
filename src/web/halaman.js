@@ -235,7 +235,7 @@ function halamanGoogle({ akun, csrf, sambungan, kode, templateUrl, pesan }) {
      Folder pengaduan: <a href="https://drive.google.com/drive/folders/${e(sambungan.folderIndukId)}" target="_blank" rel="noopener">buka folder</a></p>
   <form class="sebaris" method="post" action="/google/periksa">${csrfInput(csrf)}<button class="tombol kecil" type="submit">Periksa sambungan</button></form>
   <form class="sebaris" method="post" action="/google/putus">${csrfInput(csrf)}<button class="tombol kecil kedua" type="submit">Putuskan sambungan</button></form>
-  <p class="pudar">Setelah memutuskan sambungan di sini, buka spreadsheet Anda, menu Agen Pertanahan &rarr; Putuskan sambungan, sebelum menyambungkan lagi.</p>
+  <p class="pudar">Memutuskan sambungan juga menghapus kode rahasia di skrip Anda, sehingga bisa disambungkan lagi cukup dengan kode baru.</p>
 </div>` });
   }
   if (!templateUrl) {

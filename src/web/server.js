@@ -230,9 +230,16 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle }) {
     }
   });
   app.post('/google/putus', { preHandler: perluAktif }, async (req, reply) => {
+    const s = google.sambungan(req.akun.pengguna_id);
+    // Minta skrip menghapus kode rahasianya juga, supaya bisa langsung disambungkan lagi dengan kode baru.
+    let skripIkut = false;
+    if (s) { try { await google.putuskanSkrip(s); skripIkut = true; } catch { skripIkut = false; } }
     db.google.hapus(req.akun.pengguna_id);
-    catat(req, 'google_diputus');
-    const h = halGoogle(req, { jenis: 'info', teks: 'Sambungan Google diputus. Untuk menyambungkan lagi, buka spreadsheet Anda, menu Agen Pertanahan → Putuskan sambungan, lalu ikuti langkah di bawah.' });
+    catat(req, 'google_diputus', { skrip_ikut: skripIkut });
+    const teks = skripIkut
+      ? 'Sambungan Google diputus. Untuk menyambungkan lagi: buka tautan Aplikasi web (Apps Script → Terapkan → Kelola deployment), lalu ketik kode baru di bawah.'
+      : 'Sambungan diputus di dashboard. Skrip di spreadsheet tidak bisa dihubungi, jadi sebelum menyambungkan lagi buka spreadsheet Anda, menu Agen Pertanahan → Putuskan sambungan.';
+    const h = halGoogle(req, { jenis: 'info', teks });
     return kirim(reply, h.html);
   });
   // Dipanggil skrip Apps Script milik pengguna (bukan peramban), jadi tanpa cookie dan tanpa CSRF.

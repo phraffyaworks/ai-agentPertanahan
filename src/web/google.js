@@ -88,7 +88,9 @@ function buatLayananGoogle({ db, kunci, buatKlien = createAppsScriptClient }) {
     return { folderIndukId: s.folderIndukId, ...createGoogle({ appsScriptUrl: s.url, appsScriptSecret: s.rahasia, spreadsheetId: s.spreadsheetId, sheetMaster: s.sheet }) };
   }
 
-  return { kodeUntuk, periksa, terimaPasangan, sambungan, untukPengguna, UMUR_KODE };
+  const putuskanSkrip = ({ url, rahasia }) => buatKlien({ url, secret: rahasia }).call('putus');
+
+  return { kodeUntuk, periksa, putuskanSkrip, terimaPasangan, sambungan, untukPengguna, UMUR_KODE };
 }
 
 module.exports = { buatLayananGoogle, VERSI_SKRIP, RE_URL };
