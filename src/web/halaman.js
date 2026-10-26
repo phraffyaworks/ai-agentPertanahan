@@ -119,7 +119,7 @@ const halamanMasuk = ({ csrf, nilai = {}, salah = null, pesan }) => tata({ judul
     <button class="tombol" type="submit">Masuk</button>
   </form>
   <p>Belum punya akun? <a href="/daftar">Daftar</a></p>
-  <p class="pudar">Lupa kata sandi? Hubungi pengelola untuk mengatur ulang.</p>
+  <p class="pudar">Lupa kata sandi? Hubungi super admin. Anda akan dikirimi tautan untuk membuat kata sandi baru sendiri.</p>
 </div>` });
 
 const halamanKode2fa = ({ csrf, salah = null }) => tata({ judul: 'Verifikasi dua langkah', csrf, isi: `
@@ -202,6 +202,7 @@ function halamanAdminPengguna({ akun, csrf, daftar, pesan }) {
         p.status !== 'aktif' ? tombol(p, 'aktif', p.status === 'menunggu' ? 'Setujui' : 'Aktifkan') : '',
         p.status === 'menunggu' ? tombol(p, 'ditolak', 'Tolak', 'kedua') : '',
         p.status === 'aktif' ? tombol(p, 'dibekukan', 'Bekukan', 'bahaya') : '',
+        p.status === 'aktif' ? `<form class="sebaris" method="post" action="/admin/pengguna/${p.id}/reset-sandi">${csrfInput(csrf)}<button class="tombol kecil kedua" type="submit">Lupa sandi</button></form>` : '',
       ].join('')}</td></tr>`).join('');
   return tata({ judul: 'Pengguna', akun, csrf, pesan, isi: `
 <h1>Pengguna</h1>
@@ -359,6 +360,34 @@ function halamanPemakaian({ akun, csrf, baris }) {
 <tbody>${isi || '<tr><td colspan="8">Belum ada pemakaian.</td></tr>'}</tbody></table></div>` });
 }
 
+// ---------- atur ulang kata sandi ----------
+const fmtTanggalJam = ms => new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'full', timeStyle: 'short' }).format(new Date(ms));
+
+const halamanTautanReset = ({ akun, csrf, pengguna, tautan, kedaluwarsa }) => tata({ judul: 'Tautan kata sandi baru', akun, csrf, isi: `
+<div class="kartu sempit">
+  <h1>Tautan kata sandi baru</h1>
+  <p>Kirim tautan ini kepada <strong>${e(pengguna.nama)}</strong> (${e(pengguna.email)}), misalnya lewat WhatsApp atau email kedinasan.</p>
+  <p class="kode">${e(tautan)}</p>
+  <ul>
+    <li>Berlaku sampai ${e(fmtTanggalJam(kedaluwarsa))} WIB, dan hanya bisa dipakai sekali.</li>
+    <li>Pengguna membuat kata sandi barunya sendiri; Anda tidak pernah mengetahuinya.</li>
+    <li>Setelah kata sandi diganti, semua sesi lama pengguna itu otomatis keluar.</li>
+    <li>Pastikan tautan dikirim ke orang yang benar. Siapa pun yang memegang tautan ini bisa mengganti kata sandi akun tersebut.</li>
+  </ul>
+  <p><a href="/admin/pengguna">Kembali ke Pengguna</a></p>
+</div>` });
+
+const halamanAturSandi = ({ csrf, nama, salah = {}, galat = null }) => tata({ judul: 'Buat kata sandi baru', csrf, isi: `
+<div class="kartu sempit">
+  <h1>Buat kata sandi baru</h1>
+  ${galat ? `<div class="pemberitahuan buruk" role="alert">${e(galat)}</div>` : `<p>Untuk akun <strong>${e(nama)}</strong>.</p>
+  <form method="post" novalidate>${csrfInput(csrf)}
+    ${kolom({ nama: 'sandi', label: 'Kata sandi baru', jenis: 'password', salah: salah.sandi, lengkapi: 'new-password', bantuan: 'Minimal 10 karakter. Boleh berupa kalimat yang mudah Anda ingat.' })}
+    ${kolom({ nama: 'sandi2', label: 'Ulangi kata sandi baru', jenis: 'password', salah: salah.sandi2, lengkapi: 'new-password' })}
+    <button class="tombol" type="submit">Simpan kata sandi</button>
+  </form>`}
+</div>` });
+
 const halamanGalat = ({ judul, teks, akun = null, csrf = '' }) => tata({ judul, akun, csrf, isi: `<div class="kartu sempit"><h1>${e(judul)}</h1><p>${e(teks)}</p><p><a href="/">Kembali ke beranda</a></p></div>` });
 
 // Hash gaya untuk Content-Security-Policy (style-src) tanpa 'unsafe-inline'.
@@ -367,5 +396,5 @@ const HASH_GAYA = `'sha256-${require('crypto').createHash('sha256').update(GAYA)
 module.exports = {
   e, tata, HASH_GAYA, kolom, KOLOM_PROFIL,
   halamanDaftar, halamanMasuk, halamanKode2fa, halamanStatus, halamanMulai, halamanProfil,
-  halamanAdminPengguna, halamanAdmin2fa, halamanAudit, halamanGalat, halamanGoogle, halamanChat, renderEntri, renderPersetujuan, halamanPemakaian,
+  halamanAdminPengguna, halamanAdmin2fa, halamanAudit, halamanGalat, halamanGoogle, halamanChat, renderEntri, renderPersetujuan, halamanPemakaian, halamanTautanReset, halamanAturSandi,
 };

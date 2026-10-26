@@ -332,6 +332,48 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle, buatLayan
   app.get('/pemakaian', { preHandler: perluAktif }, async (req, reply) =>
     kirim(reply, H.halamanPemakaian({ akun: req.akun, csrf: req.akun.csrf, baris: db.pemakaian.perHari(req.akun.pengguna_id, Date.now() - 30 * 24 * 3600e3) })));
 
+
+  // ---------- lupa kata sandi ----------
+  // Super admin membuat tautan sekali pakai (berlaku 24 jam); pengguna membuat kata sandi barunya sendiri.
+  const UMUR_RESET = 24 * 3600e3;
+  const alamatDasar = req => konfigurasi.alamat || `${req.protocol}://${req.headers.host}`;
+  app.post('/admin/pengguna/:id/reset-sandi', { preHandler: perluAdmin }, async (req, reply) => {
+    const sasaran = db.pengguna.olehId(Number(req.params.id));
+    if (!sasaran || sasaran.peran === 'admin' || sasaran.status !== 'aktif') {
+      return kirim(reply, H.halamanAdminPengguna({ akun: req.akun, csrf: req.akun.csrf, daftar: db.pengguna.daftar(),
+        pesan: { jenis: 'buruk', teks: 'Tautan kata sandi hanya bisa dibuat untuk pengguna aktif. Untuk akun super admin, pakai npm run atur-sandi di VPS.' } }), 400);
+    }
+    const token = K.tokenAcak(32);
+    db.kodePasang.buat({ jenis: 'reset', kode_hash: K.sha256(token), pengguna_id: sasaran.id, umurMs: UMUR_RESET });
+    catat(req, 'reset_sandi_dibuat', null, sasaran.id);
+    return kirim(reply, H.halamanTautanReset({ akun: req.akun, csrf: req.akun.csrf, pengguna: sasaran,
+      tautan: `${alamatDasar(req)}/atur-sandi/${token}`, kedaluwarsa: Date.now() + UMUR_RESET }));
+  });
+  const ambilReset = token => {
+    const r = /^[\w-]{40,}$/.test(String(token || '')) ? db.kodePasang.cek('reset', K.sha256(token)) : null;
+    return r ? { r, p: db.pengguna.olehId(r.pengguna_id) } : null;
+  };
+  const GALAT_RESET = 'Tautan ini salah, sudah dipakai, atau sudah kedaluwarsa. Minta tautan baru kepada super admin.';
+  app.get('/atur-sandi/:token', async (req, reply) => {
+    const x = ambilReset(req.params.token);
+    return kirim(reply, H.halamanAturSandi({ csrf: csrfOf(req, reply), nama: x?.p.nama, galat: x ? null : GALAT_RESET }), x ? 200 : 404);
+  });
+  app.post('/atur-sandi/:token', batasKirim, async (req, reply) => {
+    const x = ambilReset(req.params.token);
+    if (!x) return kirim(reply, H.halamanAturSandi({ csrf: csrfOf(req, reply), galat: GALAT_RESET }), 404);
+    const sandi = String(req.body?.sandi || ''), salah = {};
+    if (sandi.length < K.MIN_SANDI) salah.sandi = `Kata sandi minimal ${K.MIN_SANDI} karakter.`;
+    else if (sandi !== req.body?.sandi2) salah.sandi2 = 'Kedua kata sandi tidak sama.';
+    if (Object.keys(salah).length) return kirim(reply, H.halamanAturSandi({ csrf: csrfOf(req, reply), nama: x.p.nama, salah }), 422);
+    if (!db.kodePasang.pakai('reset', K.sha256(req.params.token))) return kirim(reply, H.halamanAturSandi({ csrf: csrfOf(req, reply), galat: GALAT_RESET }), 404);
+    db.pengguna.ubahSandi(x.p.id, K.hashSandi(sandi));
+    db.sesi.hapusMilik(x.p.id);
+    db.audit.catat({ pelaku_id: x.p.id, sasaran_id: x.p.id, aksi: 'sandi_diganti', ip: ip(req) });
+    if (req.akun) reply.clearCookie(NAMA_SESI, { path: '/' });
+    return kirim(reply, H.halamanMasuk({ csrf: csrfPra(req, reply), nilai: { email: x.p.email },
+      pesan: { jenis: 'baik', teks: 'Kata sandi baru tersimpan. Silakan masuk dengan kata sandi baru.' } }));
+  });
+
   // ---------- super admin ----------
   app.get('/admin', { preHandler: perluAdmin }, async (req, reply) => reply.redirect('/admin/pengguna'));
   app.get('/admin/pengguna', { preHandler: perluAdmin }, async (req, reply) =>

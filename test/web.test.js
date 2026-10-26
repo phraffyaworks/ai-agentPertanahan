@@ -284,3 +284,52 @@ test('Google: judul kolom di template Apps Script sama dengan Master Data', () =
   assert.deepStrictEqual(daftar, HEADER);
   assert.match(kodeGs, /var VERSI = '3';/);
 });
+
+// ---------- lupa kata sandi ----------
+test('lupa sandi: super admin membuat tautan sekali pakai; pengguna membuat sandi baru sendiri', async () => {
+  const { db, app } = siapkan();
+  const id = db.pengguna.buat({ email: 'lupa@contoh.id', nama: 'Lupa', unit_kerja: 'U', sandi_hash: K.hashSandi('sandi lama sekali'), status: 'aktif' });
+  const u = peramban(app);
+  await u.get('/masuk');
+  await u.post('/masuk', { email: 'lupa@contoh.id', sandi: 'sandi lama sekali' });
+  assert.strictEqual((await u.get('/mulai')).statusCode, 200);
+  // Pengguna biasa tidak bisa membuat tautan.
+  assert.strictEqual((await u.post(`/admin/pengguna/${id}/reset-sandi`)).statusCode, 403);
+
+  const { a } = await buatAdmin(db, app);
+  await a.get('/admin/pengguna');
+  const r = await a.post(`/admin/pengguna/${id}/reset-sandi`);
+  assert.strictEqual(r.statusCode, 200);
+  const tautan = /\/atur-sandi\/([\w-]+)/.exec(r.body)[0];
+  assert.ok(db.audit.terbaru().some(x => x.aksi === 'reset_sandi_dibuat' && x.sasaran_id === id));
+
+  const tamu = peramban(app);
+  assert.match((await tamu.get(tautan)).body, /Untuk akun <strong>Lupa<\/strong>/);
+  assert.strictEqual((await tamu.post(tautan, { sandi: 'pendek', sandi2: 'pendek' })).statusCode, 422);
+  const ok = await tamu.post(tautan, { sandi: 'sandi baru yang panjang', sandi2: 'sandi baru yang panjang' });
+  assert.match(ok.body, /Kata sandi baru tersimpan/);
+  // Sesi lama keluar, sandi lama tidak berlaku, tautan tidak bisa dipakai lagi.
+  assert.strictEqual((await u.get('/mulai')).headers.location, '/masuk');
+  const v = peramban(app);
+  await v.get('/masuk');
+  assert.strictEqual((await v.post('/masuk', { email: 'lupa@contoh.id', sandi: 'sandi lama sekali' })).statusCode, 401);
+  assert.strictEqual((await v.post('/masuk', { email: 'lupa@contoh.id', sandi: 'sandi baru yang panjang' })).headers.location, '/');
+  assert.strictEqual((await peramban(app).get(tautan)).statusCode, 404);
+  assert.strictEqual((await peramban(app).get('/atur-sandi/tautan-palsu-yang-tidak-pernah-dibuat-oleh-siapa-pun-123')).statusCode, 404);
+  await app.close();
+});
+
+test('lupa sandi: tautan lama gugur saat tautan baru dibuat, dan kedaluwarsa setelah 24 jam', async () => {
+  const { db, app } = siapkan();
+  const id = db.pengguna.buat({ email: 'k@contoh.id', nama: 'K', unit_kerja: 'U', sandi_hash: K.hashSandi('sandi lama sekali'), status: 'aktif' });
+  const { a } = await buatAdmin(db, app);
+  await a.get('/admin/pengguna');
+  const t1 = /\/atur-sandi\/([\w-]+)/.exec((await a.post(`/admin/pengguna/${id}/reset-sandi`)).body)[0];
+  await a.get('/admin/pengguna');
+  const t2 = /\/atur-sandi\/([\w-]+)/.exec((await a.post(`/admin/pengguna/${id}/reset-sandi`)).body)[0];
+  assert.strictEqual((await peramban(app).get(t1)).statusCode, 404);
+  assert.strictEqual((await peramban(app).get(t2)).statusCode, 200);
+  db.db.prepare("UPDATE kode_pasang SET kedaluwarsa = ? WHERE jenis = 'reset'").run(Date.now() - 1);
+  assert.strictEqual((await peramban(app).get(t2)).statusCode, 404);
+  await app.close();
+});

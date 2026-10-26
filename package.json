@@ -10,7 +10,8 @@
     "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js",
     "setup": "node scripts/setup.js",
     "web": "node --disable-warning=ExperimentalWarning src/web/index.js",
-    "buat-admin": "node --disable-warning=ExperimentalWarning scripts/buat-admin.js"
+    "buat-admin": "node --disable-warning=ExperimentalWarning scripts/buat-admin.js",
+    "atur-sandi": "node --disable-warning=ExperimentalWarning scripts/atur-sandi.js"
   },
   "license": "UNLICENSED",
   "dependencies": {
