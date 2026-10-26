@@ -3,7 +3,7 @@
 const Fastify = require('fastify');
 const K = require('./keamanan');
 const H = require('./halaman');
-const { validasiProfil } = require('./profil');
+const { validasiProfil, nomorWa, tampilWa } = require('./profil');
 const { buatLayananGoogle } = require('./google');
 
 const UMUR_SESI = { pengguna: 7 * 24 * 3600e3, admin: 12 * 3600e3 };
@@ -107,8 +107,10 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle, buatLayan
   app.get('/daftar', async (req, reply) => (req.akun ? reply.redirect('/') : kirim(reply, H.halamanDaftar({ csrf: csrfPra(req, reply) }))));
   app.post('/daftar', batasKirim, async (req, reply) => {
     const b = req.body || {};
-    const nilai = { nama: String(b.nama || '').trim(), email: String(b.email || '').trim().toLowerCase(), unit_kerja: String(b.unit_kerja || '').trim() };
+    const nilai = { nama: String(b.nama || '').trim(), email: String(b.email || '').trim().toLowerCase(), unit_kerja: String(b.unit_kerja || '').trim(), nomor_wa: String(b.nomor_wa || '').trim() };
     const salah = {};
+    const wa = nomorWa(nilai.nomor_wa);
+    if (!wa) salah.nomor_wa = 'Nomor WhatsApp tidak sah. Contoh: 0812-3456-7890';
     if (!nilai.nama) salah.nama = 'Wajib diisi.';
     if (!RE_EMAIL.test(nilai.email)) salah.email = 'Alamat email tidak sah. Contoh: budi.santoso@gmail.com';
     else if (db.pengguna.olehEmail(nilai.email)) salah.email = 'Email ini sudah terdaftar. Silakan masuk.';
@@ -118,7 +120,7 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle, buatLayan
     if (Object.values(nilai).some(v => v.length > 200)) salah.nama = salah.nama || 'Isian terlalu panjang.';
     if (Object.keys(salah).length) return kirim(reply, H.halamanDaftar({ csrf: csrfPra(req, reply), nilai, salah }), 422);
 
-    const id = db.pengguna.buat({ ...nilai, sandi_hash: K.hashSandi(b.sandi) });
+    const id = db.pengguna.buat({ ...nilai, nomor_wa: wa, sandi_hash: K.hashSandi(b.sandi) });
     db.audit.catat({ pelaku_id: id, sasaran_id: id, aksi: 'daftar', ip: ip(req) });
     return kirim(reply, H.halamanMasuk({ csrf: csrfPra(req, reply), nilai: { email: nilai.email },
       pesan: { jenis: 'baik', teks: 'Pendaftaran berhasil. Akun Anda menunggu persetujuan pengelola; Anda tetap bisa masuk untuk melihat statusnya.' } }));
@@ -200,14 +202,22 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle, buatLayan
   });
 
   // ---------- profil ----------
-  app.get('/profil', { preHandler: perluAktif }, async (req, reply) =>
-    kirim(reply, H.halamanProfil({ akun: req.akun, csrf: req.akun.csrf, nilai: db.profil.ambil(req.akun.pengguna_id) || { kota: 'Jakarta' } })));
+  const halProfil = (req, ekstra = {}) => H.halamanProfil({ akun: req.akun, csrf: req.akun.csrf,
+    nilai: db.profil.ambil(req.akun.pengguna_id) || { kota: 'Jakarta' }, nomorWa: tampilWa(db.pengguna.olehId(req.akun.pengguna_id).nomor_wa), ...ekstra });
+  app.get('/profil', { preHandler: perluAktif }, async (req, reply) => kirim(reply, halProfil(req)));
   app.post('/profil', { preHandler: perluAktif }, async (req, reply) => {
     const { data, salah } = validasiProfil(req.body || {});
-    if (Object.keys(salah).length) return kirim(reply, H.halamanProfil({ akun: req.akun, csrf: req.akun.csrf, nilai: data, salah }), 422);
+    if (Object.keys(salah).length) return kirim(reply, halProfil(req, { nilai: data, salah }), 422);
     db.profil.simpan(req.akun.pengguna_id, data);
     catat(req, 'profil_disimpan');
-    return kirim(reply, H.halamanProfil({ akun: req.akun, csrf: req.akun.csrf, nilai: data, pesan: { jenis: 'baik', teks: 'Profil tersimpan.' } }));
+    return kirim(reply, halProfil(req, { nilai: data, pesan: { jenis: 'baik', teks: 'Profil tersimpan.' } }));
+  });
+  app.post('/profil/kontak', { preHandler: perluAktif }, async (req, reply) => {
+    const wa = nomorWa(req.body?.nomor_wa);
+    if (!wa) return kirim(reply, halProfil(req, { nomorWa: String(req.body?.nomor_wa || ''), salahWa: 'Nomor WhatsApp tidak sah. Contoh: 0812-3456-7890' }), 422);
+    db.pengguna.ubahNomorWa(req.akun.pengguna_id, wa);
+    catat(req, 'nomor_wa_diubah');
+    return kirim(reply, halProfil(req, { pesan: { jenis: 'baik', teks: 'Nomor WhatsApp tersimpan.' } }));
   });
 
 
@@ -345,6 +355,7 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle, buatLayan
     }
     const token = K.tokenAcak(32);
     db.kodePasang.buat({ jenis: 'reset', kode_hash: K.sha256(token), pengguna_id: sasaran.id, umurMs: UMUR_RESET });
+    db.pengguna.hapusMintaReset(sasaran.id);
     catat(req, 'reset_sandi_dibuat', null, sasaran.id);
     return kirim(reply, H.halamanTautanReset({ akun: req.akun, csrf: req.akun.csrf, pengguna: sasaran,
       tautan: `${alamatDasar(req)}/atur-sandi/${token}`, kedaluwarsa: Date.now() + UMUR_RESET }));
@@ -353,6 +364,16 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle, buatLayan
     const r = /^[\w-]{40,}$/.test(String(token || '')) ? db.kodePasang.cek('reset', K.sha256(token)) : null;
     return r ? { r, p: db.pengguna.olehId(r.pengguna_id) } : null;
   };
+  // Permintaan dari halaman Masuk. Jawabannya selalu sama, supaya tidak bisa dipakai menebak email terdaftar.
+  app.get('/lupa-sandi', async (req, reply) => kirim(reply, H.halamanLupaSandi({ csrf: csrfOf(req, reply), kontak: konfigurasi.kontakAdmin })));
+  app.post('/lupa-sandi', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const p = db.pengguna.olehEmail(String(req.body?.email || '').trim().toLowerCase());
+    if (p && p.status === 'aktif' && p.peran !== 'admin' && !(p.minta_reset && Date.now() - p.minta_reset < 10 * 60e3)) {
+      db.pengguna.tandaiMintaReset(p.id);
+      db.audit.catat({ sasaran_id: p.id, aksi: 'minta_reset_sandi', ip: ip(req) });
+    }
+    return kirim(reply, H.halamanLupaSandi({ csrf: csrfOf(req, reply), terkirim: true, kontak: konfigurasi.kontakAdmin }));
+  });
   const GALAT_RESET = 'Tautan ini salah, sudah dipakai, atau sudah kedaluwarsa. Minta tautan baru kepada super admin.';
   app.get('/atur-sandi/:token', async (req, reply) => {
     const x = ambilReset(req.params.token);

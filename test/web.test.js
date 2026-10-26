@@ -40,7 +40,7 @@ function peramban(app) {
   };
 }
 
-const DAFTAR = { nama: 'Budi Santoso', email: 'Budi@Contoh.id', unit_kerja: 'Kantor Pertanahan Kabupaten Bekasi', sandi: 'kata sandi panjang', sandi2: 'kata sandi panjang' };
+const DAFTAR = { nama: 'Budi Santoso', email: 'Budi@Contoh.id', unit_kerja: 'Kantor Pertanahan Kabupaten Bekasi', nomor_wa: '0812 3456 7890', sandi: 'kata sandi panjang', sandi2: 'kata sandi panjang' };
 
 async function buatAdmin(db, app) {
   db.pengguna.buat({ email: 'admin@contoh.id', nama: 'Admin', unit_kerja: 'Pusat', sandi_hash: K.hashSandi('sandi admin rahasia'), peran: 'admin', status: 'aktif' });
@@ -331,5 +331,51 @@ test('lupa sandi: tautan lama gugur saat tautan baru dibuat, dan kedaluwarsa set
   assert.strictEqual((await peramban(app).get(t2)).statusCode, 200);
   db.db.prepare("UPDATE kode_pasang SET kedaluwarsa = ? WHERE jenis = 'reset'").run(Date.now() - 1);
   assert.strictEqual((await peramban(app).get(t2)).statusCode, 404);
+  await app.close();
+});
+
+test('lupa sandi: permintaan dari halaman Masuk tampil di super admin; tautan dikirim lewat WhatsApp ke nomor terdaftar', async () => {
+  const { db, app } = siapkan();
+  const u = peramban(app);
+  await u.get('/daftar');
+  const salahWa = await u.post('/daftar', { ...DAFTAR, nomor_wa: '12345' });
+  assert.match(salahWa.body, /Nomor WhatsApp tidak sah/);
+  await u.post('/daftar', DAFTAR);
+  const p = db.pengguna.olehEmail('budi@contoh.id');
+  assert.strictEqual(p.nomor_wa, '6281234567890');
+  db.pengguna.ubahStatus(p.id, 'aktif', null);
+
+  // Jawaban sama untuk email terdaftar maupun tidak.
+  const tamu = peramban(app);
+  await tamu.get('/lupa-sandi');
+  const r1 = await tamu.post('/lupa-sandi', { email: 'tidak.ada@contoh.id' });
+  const r2 = await tamu.post('/lupa-sandi', { email: 'Budi@Contoh.id' });
+  assert.match(r1.body, /Permintaan sudah diterima/);
+  assert.strictEqual(r1.body.replace(/value="[^"]*"/g, ''), r2.body.replace(/value="[^"]*"/g, ''));
+  assert.ok(db.pengguna.olehId(p.id).minta_reset);
+
+  const { a } = await buatAdmin(db, app);
+  const daftar = await a.get('/admin/pengguna');
+  assert.match(daftar.body, /1 pengguna meminta kata sandi baru/);
+  assert.match(daftar.body, /Minta sandi baru/);
+  assert.match(daftar.body, /WA 0812-3456-7890/);
+  const t = await a.post(`/admin/pengguna/${p.id}/reset-sandi`);
+  assert.match(t.body, /href="https:\/\/wa\.me\/6281234567890\?text=[^"]*atur-sandi%2F/);
+  assert.match(t.body, /Kirim lewat WhatsApp ke 0812-3456-7890/);
+  assert.strictEqual(db.pengguna.olehId(p.id).minta_reset, null);
+  assert.doesNotMatch((await a.get('/admin/pengguna')).body, /meminta kata sandi baru/);
+  await app.close();
+});
+
+test('profil: nomor WhatsApp bisa diubah sendiri dan divalidasi', async () => {
+  const { db, app } = siapkan();
+  const id = db.pengguna.buat({ email: 'w@contoh.id', nama: 'W', unit_kerja: 'U', sandi_hash: K.hashSandi('sandi pengguna w'), status: 'aktif' });
+  const u = peramban(app);
+  await u.get('/masuk');
+  await u.post('/masuk', { email: 'w@contoh.id', sandi: 'sandi pengguna w' });
+  await u.get('/profil');
+  assert.strictEqual((await u.post('/profil/kontak', { nomor_wa: '021-555' })).statusCode, 422);
+  assert.match((await u.post('/profil/kontak', { nomor_wa: '+62 813 1111 2222' })).body, /Nomor WhatsApp tersimpan/);
+  assert.strictEqual(db.pengguna.olehId(id).nomor_wa, '6281311112222');
   await app.close();
 });

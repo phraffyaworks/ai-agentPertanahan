@@ -85,6 +85,9 @@ const MIGRASI = [
      ip TEXT
    );
    CREATE INDEX audit_waktu ON audit (waktu);`,
+  // 2: nomor WhatsApp pengguna (untuk mengirim tautan kata sandi) dan tanda permintaan atur ulang sandi.
+  `ALTER TABLE pengguna ADD COLUMN nomor_wa TEXT;
+   ALTER TABLE pengguna ADD COLUMN minta_reset INTEGER;`,
 ];
 
 const STATUS = ['menunggu', 'aktif', 'dibekukan', 'ditolak'];
@@ -111,13 +114,18 @@ function createDb(file) {
   const now = () => Date.now();
 
   const pengguna = {
-    buat: ({ email, nama, unit_kerja, sandi_hash, peran = 'pengguna', status = 'menunggu' }) =>
-      Number(q(`INSERT INTO pengguna (email, nama, unit_kerja, sandi_hash, peran, status, dibuat)
-                VALUES (?, ?, ?, ?, ?, ?, ?)`).run(email, nama, unit_kerja, sandi_hash, peran, status, now()).lastInsertRowid),
+    buat: ({ email, nama, unit_kerja, sandi_hash, peran = 'pengguna', status = 'menunggu', nomor_wa = null }) =>
+      Number(q(`INSERT INTO pengguna (email, nama, unit_kerja, sandi_hash, peran, status, dibuat, nomor_wa)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(email, nama, unit_kerja, sandi_hash, peran, status, now(), nomor_wa).lastInsertRowid),
     olehEmail: email => q('SELECT * FROM pengguna WHERE email = ?').get(email),
     olehId: id => q('SELECT * FROM pengguna WHERE id = ?').get(id),
-    daftar: () => q(`SELECT id, email, nama, unit_kerja, peran, status, dibuat, disetujui FROM pengguna
-                     ORDER BY CASE status WHEN 'menunggu' THEN 0 ELSE 1 END, dibuat DESC`).all(),
+    daftar: () => q(`SELECT id, email, nama, unit_kerja, peran, status, dibuat, disetujui, nomor_wa, minta_reset FROM pengguna
+                     ORDER BY CASE WHEN minta_reset IS NOT NULL THEN 0 WHEN status = 'menunggu' THEN 1 ELSE 2 END, dibuat DESC`).all(),
+    ubahNomorWa: (id, nomor_wa) => q('UPDATE pengguna SET nomor_wa = ? WHERE id = ?').run(nomor_wa, id),
+    // Permintaan "lupa kata sandi" dari halaman Masuk; dihapus saat super admin membuat tautan.
+    tandaiMintaReset: id => q('UPDATE pengguna SET minta_reset = ? WHERE id = ?').run(now(), id),
+    hapusMintaReset: id => q('UPDATE pengguna SET minta_reset = NULL WHERE id = ?').run(id),
+    jumlahMintaReset: () => q('SELECT COUNT(*) AS n FROM pengguna WHERE minta_reset IS NOT NULL').get().n,
     jumlahAdmin: () => q("SELECT COUNT(*) AS n FROM pengguna WHERE peran = 'admin'").get().n,
     ubahStatus: (id, status, olehId) => {
       if (!STATUS.includes(status)) throw new Error(`Status tidak dikenal: ${status}`);

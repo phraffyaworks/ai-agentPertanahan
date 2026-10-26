@@ -83,6 +83,9 @@ async function main() {
   console.log('\nID template Google: lihat docs/TEMPLATE-GOOGLE.md. Boleh dikosongkan dulu dan diisi nanti dengan menjalankan pemasangan lagi.');
   const template = await tanya('ID template Google', lama.GOOGLE_TEMPLATE_ID || '');
 
+  console.log('\nKontak super admin yang ditampilkan di halaman Lupa kata sandi (boleh kosong). Contoh: WhatsApp 0812-3456-7890 (Raffy)');
+  const kontak = await tanya('Kontak super admin', lama.ADMIN_KONTAK || '');
+
   console.log('\nKunci Claude API untuk dashboard (dari Claude Console → API keys). Disarankan kunci baru khusus dashboard,');
   console.log('terpisah dari kunci bot versi 1, supaya biayanya terlihat terpisah. Ketikan tidak tampil di layar.');
   let kunciClaude = lama.ANTHROPIC_API_KEY || '';
@@ -107,6 +110,7 @@ async function main() {
     APP_MASTER_KEY: lama.APP_MASTER_KEY || crypto.randomBytes(32).toString('base64'),
     GOOGLE_TEMPLATE_ID: template,
     ANTHROPIC_API_KEY: kunciClaude,
+    ADMIN_KONTAK: kontak,
   };
   const isi = ['# Dibuat oleh scripts/setup-dashboard.js. Jangan bagikan isi file ini.',
     ...Object.entries(nilai).map(([k, v]) => `${k}=${/[\s#"']/.test(v) ? JSON.stringify(v) : v}`)].join('\n') + '\n';
