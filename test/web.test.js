@@ -456,3 +456,60 @@ test('database: kolom nomor WhatsApp lama dihapus saat pembaruan, data akun teta
   db.tutup();
   for (const f of [file, `${file}-wal`, `${file}-shm`]) fs.rmSync(f, { force: true });
 });
+
+// ---------- laporan pemakaian super admin ----------
+const { rentangPeriode } = require('../src/web/periode');
+
+test('periode: rentang dihitung dalam WIB, termasuk pergantian bulan dan tahun', () => {
+  const kini = Date.UTC(2026, 9, 26, 2, 0); // 26 Oktober 2026 pukul 09.00 WIB
+  const hari = rentangPeriode('hari-ini', kini);
+  assert.strictEqual(hari.sejak, Date.UTC(2026, 9, 25, 17, 0));
+  assert.strictEqual(rentangPeriode('bulan-ini', kini).sejak, Date.UTC(2026, 8, 30, 17, 0));
+  const lalu = rentangPeriode('bulan-lalu', kini);
+  assert.deepStrictEqual([lalu.sejak, lalu.sampai], [Date.UTC(2026, 7, 31, 17, 0), Date.UTC(2026, 8, 30, 17, 0)]);
+  assert.strictEqual(lalu.keterangan, 'September 2026');
+  // 1 November pukul 01.00 WIB masih 31 Oktober menurut UTC.
+  assert.strictEqual(rentangPeriode('bulan-ini', Date.UTC(2026, 9, 31, 18, 0)).sejak, Date.UTC(2026, 9, 31, 17, 0));
+  assert.strictEqual(rentangPeriode('bulan-lalu', Date.UTC(2027, 0, 15, 5, 0)).sejak, Date.UTC(2026, 10, 30, 17, 0));
+  assert.strictEqual(rentangPeriode('tidak-dikenal', kini).kode, '30-hari');
+  assert.strictEqual(rentangPeriode('7-hari', kini).sejak, kini - 7 * 24 * 3600e3);
+});
+
+test('super admin: pemakaian per pengguna dan per model, rincian per hari; pengguna biasa ditolak', async () => {
+  const { db, app } = siapkan();
+  const budi = db.pengguna.buat({ email: 'budi@contoh.id', nama: 'Budi Santoso', unit_kerja: 'Subdit A', sandi_hash: K.hashSandi('sandi budi panjang'), status: 'aktif' });
+  const sari = db.pengguna.buat({ email: 'sari@contoh.id', nama: 'Sari Dewi', unit_kerja: 'Subdit B', sandi_hash: K.hashSandi('sandi sari panjang'), status: 'aktif' });
+  db.pengguna.buat({ email: 'tunggu@contoh.id', nama: 'Masih Menunggu', unit_kerja: 'U', sandi_hash: 'x' });
+  const catat = (pengguna_id, r) => db.pemakaian.catat({ pengguna_id, saluran: 'web', penyedia: 'anthropic', model: 'claude-sonnet-5-5', ...r });
+  catat(budi, { token_masuk: 1000, token_keluar: 200, token_cache_baca: 5000, token_cache_tulis: 300, biaya_usd: 0.01 });
+  catat(budi, { token_masuk: 500, token_keluar: 100, pencarian_web: 2, biaya_usd: 0.03 });
+  catat(sari, { model: 'claude-opus-5-5', token_masuk: 9000, token_keluar: 3000, biaya_usd: 0.5 });
+  catat(budi, { token_masuk: 77777, biaya_usd: 9, waktu: Date.now() - 31 * 24 * 3600e3 }); // di luar 30 hari
+
+  const u = peramban(app);
+  await u.get('/masuk');
+  await u.post('/masuk', { email: 'budi@contoh.id', sandi: 'sandi budi panjang' });
+  assert.strictEqual((await u.get('/admin/pemakaian')).statusCode, 403);
+
+  const { a } = await buatAdmin(db, app);
+  const r = await a.get('/admin/pemakaian');
+  assert.strictEqual(r.statusCode, 200);
+  assert.match(r.body, /<strong aria-current="page">30 hari terakhir<\/strong>/);
+  assert.match(r.body, /<strong>3<\/strong> panggilan · <strong>15\.800<\/strong> token masuk · <strong>3\.300<\/strong> token keluar/);
+  // Urut dari biaya terbesar; pengguna yang belum disetujui dan tanpa pemakaian tidak tampil; admin aktif tampil dengan nol.
+  assert.ok(r.body.indexOf('Sari Dewi') < r.body.indexOf('Budi Santoso'));
+  assert.doesNotMatch(r.body, /Masih Menunggu/);
+  assert.match(r.body, /admin@contoh\.id/);
+  assert.doesNotMatch(r.body, /77\.777/);
+  assert.match(r.body, /<td>claude-opus-5-5<\/td><td>1<\/td>/);
+  assert.match(r.body, /<td>claude-sonnet-5-5<\/td><td>2<\/td>\s*<td>6\.800<\/td><td>300<\/td><td>2<\/td>/);
+  assert.match(r.body, new RegExp(`href="/admin/pemakaian/${budi}\\?periode=30-hari">Rincian`));
+  assert.match((await a.get('/admin/pemakaian?periode=bulan-lalu')).body, /<strong aria-current="page">Bulan lalu<\/strong>/);
+
+  const rinci = await a.get(`/admin/pemakaian/${budi}?periode=30-hari`);
+  assert.match(rinci.body, /Pemakaian: Budi Santoso/);
+  assert.match(rinci.body, /<strong>2<\/strong> panggilan · <strong>6\.800<\/strong> token masuk · <strong>300<\/strong> token keluar/);
+  assert.strictEqual((await a.get('/admin/pemakaian/99999')).statusCode, 404);
+  assert.match((await a.get('/admin/pengguna')).body, /<a href="\/admin\/pemakaian">Pemakaian<\/a>/);
+  await app.close();
+});

@@ -203,13 +203,26 @@ function createDb(file) {
       r.token_masuk || 0, r.token_keluar || 0, r.token_cache_baca || 0, r.token_cache_tulis || 0, r.pencarian_web || 0,
       r.biaya_usd || 0, r.durasi_ms ?? null, r.berhasil === false ? 0 : 1),
     jumlah: pengguna_id => q('SELECT COUNT(*) AS n FROM pemakaian WHERE pengguna_id = ?').get(pengguna_id).n,
-    // Ringkasan per hari untuk satu pengguna (atau semua bila pengguna_id null), sejak waktu tertentu.
-    perHari: (pengguna_id, sejak) => q(`SELECT date(waktu / 1000, 'unixepoch', '+7 hours') AS hari, model,
+    // Ringkasan per hari untuk satu pengguna (atau semua bila pengguna_id null), dalam rentang [sejak, sampai).
+    perHari: (pengguna_id, sejak, sampai = Number.MAX_SAFE_INTEGER) => q(`SELECT date(waktu / 1000, 'unixepoch', '+7 hours') AS hari, model,
         SUM(token_masuk) AS token_masuk, SUM(token_keluar) AS token_keluar,
         SUM(token_cache_baca) AS token_cache_baca, SUM(token_cache_tulis) AS token_cache_tulis,
         SUM(biaya_usd) AS biaya_usd, COUNT(*) AS panggilan
-      FROM pemakaian WHERE (? IS NULL OR pengguna_id = ?) AND waktu >= ?
-      GROUP BY hari, model ORDER BY hari DESC, model`).all(pengguna_id, pengguna_id, sejak),
+      FROM pemakaian WHERE (? IS NULL OR pengguna_id = ?) AND waktu >= ? AND waktu < ?
+      GROUP BY hari, model ORDER BY hari DESC, model`).all(pengguna_id, pengguna_id, sejak, sampai),
+    // Laporan super admin: jumlah per pengguna dalam rentang. Pengguna aktif tanpa pemakaian tetap tampil (angka nol).
+    perPengguna: (sejak, sampai) => q(`SELECT p.id, p.nama, p.email, p.unit_kerja, p.status,
+        COUNT(m.id) AS panggilan, COALESCE(SUM(m.token_masuk), 0) AS token_masuk, COALESCE(SUM(m.token_keluar), 0) AS token_keluar,
+        COALESCE(SUM(m.token_cache_baca), 0) AS token_cache_baca, COALESCE(SUM(m.token_cache_tulis), 0) AS token_cache_tulis,
+        COALESCE(SUM(m.pencarian_web), 0) AS pencarian_web, COALESCE(SUM(m.biaya_usd), 0) AS biaya_usd,
+        (SELECT MAX(waktu) FROM pemakaian WHERE pengguna_id = p.id) AS terakhir
+      FROM pengguna p LEFT JOIN pemakaian m ON m.pengguna_id = p.id AND m.waktu >= ? AND m.waktu < ?
+      GROUP BY p.id HAVING panggilan > 0 OR p.status = 'aktif'
+      ORDER BY biaya_usd DESC, panggilan DESC, p.nama`).all(sejak, sampai),
+    perModel: (sejak, sampai) => q(`SELECT model, COUNT(*) AS panggilan, SUM(token_masuk) AS token_masuk, SUM(token_keluar) AS token_keluar,
+        SUM(token_cache_baca) AS token_cache_baca, SUM(token_cache_tulis) AS token_cache_tulis,
+        SUM(pencarian_web) AS pencarian_web, SUM(biaya_usd) AS biaya_usd
+      FROM pemakaian WHERE waktu >= ? AND waktu < ? GROUP BY model ORDER BY biaya_usd DESC`).all(sejak, sampai),
   };
 
   const audit = {

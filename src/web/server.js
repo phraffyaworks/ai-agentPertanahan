@@ -6,6 +6,7 @@ const H = require('./halaman');
 const { validasiProfil } = require('./profil');
 const { buatLayananGoogle } = require('./google');
 const { buatSurel } = require('./surel');
+const { PERIODE, rentangPeriode } = require('./periode');
 
 const UMUR_SESI = { pengguna: 7 * 24 * 3600e3, admin: 12 * 3600e3 };
 const BATAS_GAGAL = 5, KUNCI_MS = 15 * 60e3;
@@ -441,6 +442,19 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle, buatLayan
     catat(req, `status_${status}`, null, sasaran.id);
     const teks = { aktif: 'disetujui', dibekukan: 'dibekukan', ditolak: 'ditolak' }[status];
     return tampil({ jenis: 'baik', teks: `${sasaran.nama} ${teks}.` });
+  });
+  // Laporan pemakaian semua pengguna (angka saja, tanpa isi percakapan).
+  app.get('/admin/pemakaian', { preHandler: perluAdmin }, async (req, reply) => {
+    const r = rentangPeriode(req.query.periode);
+    return kirim(reply, H.halamanAdminPemakaian({ akun: req.akun, csrf: req.akun.csrf, periode: PERIODE, rentang: r,
+      perPengguna: db.pemakaian.perPengguna(r.sejak, r.sampai), perModel: db.pemakaian.perModel(r.sejak, r.sampai) }));
+  });
+  app.get('/admin/pemakaian/:id', { preHandler: perluAdmin }, async (req, reply) => {
+    const p = db.pengguna.olehId(Number(req.params.id));
+    if (!p) return reply.callNotFound();
+    const r = rentangPeriode(req.query.periode);
+    return kirim(reply, H.halamanAdminPemakaianPengguna({ akun: req.akun, csrf: req.akun.csrf, pengguna: p, periode: PERIODE, rentang: r,
+      baris: db.pemakaian.perHari(p.id, r.sejak, r.sampai) }));
   });
   app.get('/admin/audit', { preHandler: perluAdmin }, async (req, reply) =>
     kirim(reply, H.halamanAudit({ akun: req.akun, csrf: req.akun.csrf, daftar: db.audit.terbaru(200) })));

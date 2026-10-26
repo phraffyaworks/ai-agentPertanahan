@@ -14,6 +14,7 @@ header{background:var(--kartu);border-bottom:1px solid var(--garis)}
 .merek{font-weight:700;margin-right:auto;color:var(--teks);text-decoration:none}
 nav{display:flex;gap:18px;align-items:center;flex-wrap:wrap}nav a,nav button{color:var(--utama);text-decoration:none;background:none;border:0;font:inherit;cursor:pointer;padding:4px 0}
 nav form,.sebaris{display:inline}
+nav.sub{margin:4px 0 16px}nav.sub strong{padding:4px 0}
 main{max-width:960px;margin:0 auto;padding:24px 16px 64px}
 h1{font-size:1.6rem;margin:0 0 8px}h2{font-size:1.2rem;margin:28px 0 8px}
 .kartu{background:var(--kartu);border:1px solid var(--garis);border-radius:10px;padding:20px;margin:16px 0}
@@ -190,6 +191,9 @@ ${Object.keys(salah).length ? '<div class="pemberitahuan buruk" role="alert">Ada
 
 // ---------- super admin ----------
 const fmtWaktu = ms => (ms ? new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(ms)) : '—');
+const MENU_ADMIN = [['/admin/pengguna', 'Pengguna'], ['/admin/pemakaian', 'Pemakaian'], ['/admin/audit', 'Log audit']];
+const menuAdmin = aktif => `<nav class="sub" aria-label="Menu super admin">${MENU_ADMIN.map(([u, t]) =>
+  (u === aktif ? `<strong aria-current="page">${t}</strong>` : `<a href="${u}">${t}</a>`)).join('')}</nav>`;
 
 function halamanAdminPengguna({ akun, csrf, daftar, pesan, pengirim = null }) {
   const minta = daftar.filter(p => p.minta_reset).length;
@@ -210,12 +214,12 @@ function halamanAdminPengguna({ akun, csrf, daftar, pesan, pengirim = null }) {
       ].join('')}</td></tr>`).join('');
   return tata({ judul: 'Pengguna', akun, csrf, pesan, isi: `
 <h1>Pengguna</h1>
+${menuAdmin('/admin/pengguna')}
 ${minta ? `<div class="pemberitahuan info" role="status"><strong>${minta} permintaan kata sandi baru gagal terkirim lewat email.</strong> Klik <strong>Kirim tautan sandi baru</strong> di barisnya.</div>` : ''}
 ${pengirim ? `<div class="kartu"><p>Email lupa kata sandi dikirim otomatis lewat Gmail yang tersambung di akun <strong>${e(pengirim.nama)}</strong>.</p>
   <form method="post" action="/admin/uji-email">${csrfInput(csrf)}<button class="tombol kecil kedua" type="submit">Kirim email uji ke saya</button></form></div>`
     : `<div class="pemberitahuan buruk" role="alert"><strong>Email lupa kata sandi belum bisa terkirim.</strong> Email dikirim lewat Gmail akun Google super admin.
   Sambungkan Google Anda di <a href="/google">Hubungkan Google</a>, lalu kembali ke sini dan tekan <strong>Kirim email uji ke saya</strong>.</div>`}
-<p><a href="/admin/audit">Log audit</a></p>
 <div class="kartu gulir"><table><thead><tr><th>Nama</th><th>Unit kerja</th><th>Status</th><th>Mendaftar</th><th>Tindakan</th></tr></thead>
 <tbody>${baris || '<tr><td colspan="5">Belum ada pengguna.</td></tr>'}</tbody></table></div>` });
 }
@@ -241,7 +245,7 @@ const halamanAdmin2fa = ({ akun, csrf, rahasia, uri, salah = null }) => tata({ j
 function halamanAudit({ akun, csrf, daftar }) {
   const baris = daftar.map(a => `<tr><td>${fmtWaktu(a.waktu)}</td><td>${e(a.pelaku_email || '—')}</td><td>${e(a.aksi)}</td>
       <td>${e(a.sasaran_email || '')}</td><td class="pudar">${e(a.ip || '')}</td></tr>`).join('');
-  return tata({ judul: 'Log audit', akun, csrf, isi: `<h1>Log audit</h1><p><a href="/admin/pengguna">Kembali ke Pengguna</a></p>
+  return tata({ judul: 'Log audit', akun, csrf, isi: `<h1>Log audit</h1>${menuAdmin('/admin/audit')}
 <div class="kartu gulir"><table><thead><tr><th>Waktu</th><th>Pelaku</th><th>Aksi</th><th>Sasaran</th><th>IP</th></tr></thead>
 <tbody>${baris || '<tr><td colspan="5">Belum ada catatan.</td></tr>'}</tbody></table></div>` });
 }
@@ -356,17 +360,64 @@ function halamanChat({ akun, csrf, entri, menunggu, sibuk }) {
 const angka = n => Number(n || 0).toLocaleString('id-ID');
 const dolar = n => `US$${Number(n || 0).toLocaleString('id-ID', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
 
+const jumlahPemakaian = baris => baris.reduce((t, r) => ({ panggilan: t.panggilan + r.panggilan,
+  masuk: t.masuk + r.token_masuk + r.token_cache_baca + r.token_cache_tulis, keluar: t.keluar + r.token_keluar, biaya: t.biaya + r.biaya_usd }),
+{ panggilan: 0, masuk: 0, keluar: 0, biaya: 0 });
+const ringkasanPemakaian = t => `<div class="kartu"><strong>${angka(t.panggilan)}</strong> panggilan · <strong>${angka(t.masuk)}</strong> token masuk · <strong>${angka(t.keluar)}</strong> token keluar · perkiraan biaya <strong>${dolar(t.biaya)}</strong></div>`;
+const tabelHarian = baris => `<div class="kartu gulir"><table><thead><tr><th>Tanggal</th><th>Model</th><th>Panggilan</th><th>Token masuk</th><th>Dari cache</th><th>Tulis cache</th><th>Token keluar</th><th>Biaya</th></tr></thead>
+<tbody>${baris.map(r => `<tr><td>${e(r.hari)}</td><td>${e(r.model)}</td><td>${angka(r.panggilan)}</td>
+    <td>${angka(r.token_masuk)}</td><td>${angka(r.token_cache_baca)}</td><td>${angka(r.token_cache_tulis)}</td><td>${angka(r.token_keluar)}</td><td>${dolar(r.biaya_usd)}</td></tr>`).join('')
+  || '<tr><td colspan="8">Belum ada pemakaian.</td></tr>'}</tbody></table></div>`;
+const KET_TOKEN = 'Token masuk = teks yang dikirim ke model (biasa, dibaca dari cache, ditulis ke cache). Token keluar = jawaban model. Biaya adalah perkiraan menurut harga resmi penyedia, dalam dolar AS; tagihan sebenarnya ada di Claude Console.';
+
 function halamanPemakaian({ akun, csrf, baris }) {
-  const total = baris.reduce((t, r) => ({ panggilan: t.panggilan + r.panggilan, masuk: t.masuk + r.token_masuk + r.token_cache_baca + r.token_cache_tulis,
-    keluar: t.keluar + r.token_keluar, biaya: t.biaya + r.biaya_usd }), { panggilan: 0, masuk: 0, keluar: 0, biaya: 0 });
-  const isi = baris.map(r => `<tr><td>${e(r.hari)}</td><td>${e(r.model)}</td><td>${angka(r.panggilan)}</td>
-    <td>${angka(r.token_masuk)}</td><td>${angka(r.token_cache_baca)}</td><td>${angka(r.token_cache_tulis)}</td><td>${angka(r.token_keluar)}</td><td>${dolar(r.biaya_usd)}</td></tr>`).join('');
   return tata({ judul: 'Pemakaian', akun, csrf, isi: `
 <h1>Pemakaian 30 hari terakhir</h1>
 <p class="pudar">Setiap panggilan model dicatat: token masuk (biasa, dibaca dari cache, ditulis ke cache), token keluar, dan perkiraan biaya menurut harga resmi penyedia.</p>
-<div class="kartu"><strong>${angka(total.panggilan)}</strong> panggilan · <strong>${angka(total.masuk)}</strong> token masuk · <strong>${angka(total.keluar)}</strong> token keluar · perkiraan biaya <strong>${dolar(total.biaya)}</strong></div>
-<div class="kartu gulir"><table><thead><tr><th>Tanggal</th><th>Model</th><th>Panggilan</th><th>Token masuk</th><th>Dari cache</th><th>Tulis cache</th><th>Token keluar</th><th>Biaya</th></tr></thead>
-<tbody>${isi || '<tr><td colspan="8">Belum ada pemakaian.</td></tr>'}</tbody></table></div>` });
+${ringkasanPemakaian(jumlahPemakaian(baris))}
+${tabelHarian(baris)}` });
+}
+
+// Pilihan periode sebagai tautan biasa (tanpa JavaScript).
+const pilihPeriode = (periode, rentang, alamat) => `<nav class="sub" aria-label="Periode">${periode.map(p =>
+  (p.kode === rentang.kode ? `<strong aria-current="page">${e(p.label)}</strong>` : `<a href="${e(alamat)}?periode=${e(p.kode)}">${e(p.label)}</a>`)).join('')}</nav>`;
+
+function halamanAdminPemakaian({ akun, csrf, periode, rentang, perPengguna, perModel }) {
+  const total = jumlahPemakaian(perPengguna);
+  const barisPengguna = perPengguna.map(p => `<tr>
+      <td><strong>${e(p.nama)}</strong><br><span class="pudar">${e(p.email)}</span><br><span class="pudar">${e(p.unit_kerja)}</span>
+        ${p.status !== 'aktif' ? `<br><span class="lencana ${e(p.status)}">${e(p.status)}</span>` : ''}</td>
+      <td>${angka(p.panggilan)}</td><td>${angka(p.token_masuk)}</td><td>${angka(p.token_cache_baca)}</td><td>${angka(p.token_cache_tulis)}</td>
+      <td>${angka(p.token_keluar)}</td><td>${angka(p.pencarian_web)}</td><td><strong>${dolar(p.biaya_usd)}</strong></td><td>${fmtWaktu(p.terakhir)}</td>
+      <td><a href="/admin/pemakaian/${p.id}?periode=${e(rentang.kode)}">Rincian</a></td></tr>`).join('');
+  const barisModel = perModel.map(m => `<tr><td>${e(m.model)}</td><td>${angka(m.panggilan)}</td>
+      <td>${angka(m.token_masuk + m.token_cache_baca + m.token_cache_tulis)}</td><td>${angka(m.token_keluar)}</td><td>${angka(m.pencarian_web)}</td><td>${dolar(m.biaya_usd)}</td></tr>`).join('');
+  return tata({ judul: 'Pemakaian pengguna', akun, csrf, isi: `
+<h1>Pemakaian</h1>
+${menuAdmin('/admin/pemakaian')}
+${pilihPeriode(periode, rentang, '/admin/pemakaian')}
+<p class="pudar">${e(rentang.label)}: ${e(rentang.keterangan)}. Yang tampil hanya angka pemakaian, bukan isi percakapan pengguna.</p>
+${ringkasanPemakaian(total)}
+<h2>Per pengguna</h2>
+<div class="kartu gulir"><table><thead><tr><th>Pengguna</th><th>Panggilan</th><th>Token masuk</th><th>Dari cache</th><th>Tulis cache</th><th>Token keluar</th><th>Pencarian web</th><th>Biaya</th><th>Terakhir dipakai</th><th></th></tr></thead>
+<tbody>${barisPengguna || '<tr><td colspan="10">Belum ada pengguna aktif.</td></tr>'}</tbody></table></div>
+<h2>Per model</h2>
+<div class="kartu gulir"><table><thead><tr><th>Model</th><th>Panggilan</th><th>Token masuk</th><th>Token keluar</th><th>Pencarian web</th><th>Biaya</th></tr></thead>
+<tbody>${barisModel || '<tr><td colspan="6">Belum ada pemakaian pada periode ini.</td></tr>'}</tbody></table></div>
+<p class="pudar">${e(KET_TOKEN)}</p>` });
+}
+
+function halamanAdminPemakaianPengguna({ akun, csrf, pengguna, periode, rentang, baris }) {
+  return tata({ judul: `Pemakaian ${pengguna.nama}`, akun, csrf, isi: `
+<h1>Pemakaian: ${e(pengguna.nama)}</h1>
+${menuAdmin('/admin/pemakaian')}
+<p class="pudar">${e(pengguna.email)} · ${e(pengguna.unit_kerja)}</p>
+${pilihPeriode(periode, rentang, `/admin/pemakaian/${pengguna.id}`)}
+<p class="pudar">${e(rentang.label)}: ${e(rentang.keterangan)}.</p>
+${ringkasanPemakaian(jumlahPemakaian(baris))}
+${tabelHarian(baris)}
+<p class="pudar">${e(KET_TOKEN)}</p>
+<p><a href="/admin/pemakaian?periode=${e(rentang.kode)}">Kembali ke semua pengguna</a></p>` });
 }
 
 // ---------- atur ulang kata sandi ----------
@@ -434,5 +485,5 @@ const HASH_GAYA = `'sha256-${require('crypto').createHash('sha256').update(GAYA)
 module.exports = {
   e, tata, HASH_GAYA, kolom, KOLOM_PROFIL,
   halamanDaftar, halamanMasuk, halamanKode2fa, halamanStatus, halamanMulai, halamanProfil,
-  halamanAdminPengguna, halamanAdmin2fa, halamanAudit, halamanGalat, halamanGoogle, halamanChat, renderEntri, renderPersetujuan, halamanPemakaian, halamanTautanReset, halamanAturSandi, halamanLupaSandi,
+  halamanAdminPengguna, halamanAdmin2fa, halamanAudit, halamanGalat, halamanGoogle, halamanChat, renderEntri, renderPersetujuan, halamanPemakaian, halamanAdminPemakaian, halamanAdminPemakaianPengguna, halamanTautanReset, halamanAturSandi, halamanLupaSandi,
 };
