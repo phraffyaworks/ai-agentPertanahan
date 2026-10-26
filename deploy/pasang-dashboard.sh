@@ -94,5 +94,7 @@ su - "${USER_BOT}" -c "cd '${APP_DIR}' && npm run --silent buat-admin"
 
 echo
 echo "Selesai. Buka https://${DOMAIN} di browser, lalu masuk dengan akun super admin."
+echo "Email lupa kata sandi dikirim lewat Gmail super admin: sambungkan Google Anda di menu Mulai -> Hubungkan Google,"
+echo "lalu di Super admin -> Pengguna tekan \"Kirim email uji ke saya\"."
 echo "Bot versi 1 tetap berjalan seperti biasa (layanan agen-pertanahan)."
 echo "Log dashboard: journalctl -u ${SERVICE} -f"

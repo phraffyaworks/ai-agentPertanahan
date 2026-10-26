@@ -17,6 +17,7 @@ nav form,.sebaris{display:inline}
 main{max-width:960px;margin:0 auto;padding:24px 16px 64px}
 h1{font-size:1.6rem;margin:0 0 8px}h2{font-size:1.2rem;margin:28px 0 8px}
 .kartu{background:var(--kartu);border:1px solid var(--garis);border-radius:10px;padding:20px;margin:16px 0}
+.kartu>:first-child{margin-top:0}
 .sempit{max-width:480px;margin-left:auto;margin-right:auto}
 label{display:block;font-weight:600;margin:16px 0 4px}
 .contoh{color:var(--pudar);font-size:.9rem;margin:2px 0 6px}
@@ -100,9 +101,8 @@ const halamanDaftar = ({ csrf, nilai = {}, salah = {}, pesan }) => tata({ judul:
   <p class="pudar">Untuk rekan di ATR/BPN. Akun aktif setelah disetujui pengelola.</p>
   <form method="post" action="/daftar" novalidate>${csrfInput(csrf)}
     ${kolom({ nama: 'nama', label: 'Nama lengkap', contoh: 'Budi Santoso', nilai: nilai.nama, salah: salah.nama, lengkapi: 'name' })}
-    ${kolom({ nama: 'email', label: 'Email', contoh: 'budi.santoso@gmail.com', jenis: 'email', nilai: nilai.email, salah: salah.email, lengkapi: 'email' })}
+    ${kolom({ nama: 'email', label: 'Email', contoh: 'budi.santoso@gmail.com', jenis: 'email', nilai: nilai.email, salah: salah.email, lengkapi: 'email', bantuan: 'Pakai email yang aktif. Bila Anda lupa kata sandi, tautan untuk membuat kata sandi baru dikirim ke email ini.' })}
     ${kolom({ nama: 'unit_kerja', label: 'Unit kerja', contoh: 'Subdit Penanganan Sengketa Penetapan Hak dan Pendaftaran Tanah', nilai: nilai.unit_kerja, salah: salah.unit_kerja, lengkapi: 'organization' })}
-    ${kolom({ nama: 'nomor_wa', label: 'Nomor WhatsApp', contoh: '0812-3456-7890', jenis: 'tel', nilai: nilai.nomor_wa, salah: salah.nomor_wa, lengkapi: 'tel', bantuan: 'Dipakai super admin untuk mengirim tautan bila Anda lupa kata sandi.' })}
     ${kolom({ nama: 'sandi', label: 'Kata sandi', jenis: 'password', salah: salah.sandi, lengkapi: 'new-password', bantuan: 'Minimal 10 karakter. Boleh berupa kalimat yang mudah Anda ingat.' })}
     ${kolom({ nama: 'sandi2', label: 'Ulangi kata sandi', jenis: 'password', salah: salah.sandi2, lengkapi: 'new-password' })}
     <button class="tombol" type="submit">Daftar</button>
@@ -179,14 +179,8 @@ const KOLOM_PROFIL = [
   { nama: 'kota', label: 'Kota di tanggal dokumen', contoh: 'Jakarta' },
 ];
 
-const halamanProfil = ({ akun, csrf, nilai = {}, salah = {}, pesan, nomorWa = '', salahWa = null }) => tata({ judul: 'Profil', akun, csrf, pesan, isi: `
-<h1>Profil</h1>
-<form method="post" action="/profil/kontak" novalidate class="kartu">${csrfInput(csrf)}
-  <h2>Kontak</h2>
-  ${kolom({ nama: 'nomor_wa', label: 'Nomor WhatsApp', contoh: '0812-3456-7890', jenis: 'tel', nilai: nomorWa, salah: salahWa, lengkapi: 'tel', bantuan: 'Super admin mengirim tautan kata sandi baru ke nomor ini bila Anda lupa kata sandi.' })}
-  <button class="tombol kecil" type="submit">Simpan nomor</button>
-</form>
-<h2>Profil penanda tangan</h2>
+const halamanProfil = ({ akun, csrf, nilai = {}, salah = {}, pesan }) => tata({ judul: 'Profil', akun, csrf, pesan, isi: `
+<h1>Profil penanda tangan</h1>
 <p class="pudar">Data ini dipakai agen saat membuat dokumen. Isi persis seperti yang harus tercetak.</p>
 ${Object.keys(salah).length ? '<div class="pemberitahuan buruk" role="alert">Ada isian yang perlu diperbaiki. Lihat tulisan merah di bawah.</div>' : ''}
 <form method="post" action="/profil" novalidate class="kartu">${csrfInput(csrf)}
@@ -197,27 +191,30 @@ ${Object.keys(salah).length ? '<div class="pemberitahuan buruk" role="alert">Ada
 // ---------- super admin ----------
 const fmtWaktu = ms => (ms ? new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(ms)) : '—');
 
-function halamanAdminPengguna({ akun, csrf, daftar, pesan }) {
-  const { tampilWa } = require('./profil');
+function halamanAdminPengguna({ akun, csrf, daftar, pesan, pengirim = null }) {
   const minta = daftar.filter(p => p.minta_reset).length;
   const tombol = (p, status, teks, kelas = '') => `<form class="sebaris" method="post" action="/admin/pengguna/${p.id}/status">
       ${csrfInput(csrf)}<input type="hidden" name="status" value="${status}"><button class="tombol kecil ${kelas}" type="submit">${teks}</button></form>`;
   const baris = daftar.map(p => `<tr>
-      <td><strong>${e(p.nama)}</strong><br><span class="pudar">${e(p.email)}</span>${p.nomor_wa ? `<br><span class="pudar">WA ${e(tampilWa(p.nomor_wa))}</span>` : ''}
-        ${p.minta_reset ? `<br><span class="lencana menunggu">Minta sandi baru · ${fmtWaktu(p.minta_reset)}</span>` : ''}</td>
+      <td><strong>${e(p.nama)}</strong><br><span class="pudar">${e(p.email)}</span>
+        ${p.minta_reset ? `<br><span class="lencana menunggu">Email sandi gagal terkirim · ${fmtWaktu(p.minta_reset)}</span>` : ''}</td>
       <td>${e(p.unit_kerja)}</td>
       <td><span class="lencana ${e(p.status)}">${e(p.status)}</span>${p.peran === 'admin' ? ' <span class="lencana">admin</span>' : ''}</td>
       <td>${fmtWaktu(p.dibuat)}</td>
       <td>${p.id === akun.pengguna_id || p.peran === 'admin' ? '' : [
         p.status !== 'aktif' ? tombol(p, 'aktif', p.status === 'menunggu' ? 'Setujui' : 'Aktifkan') : '',
         p.status === 'menunggu' ? tombol(p, 'ditolak', 'Tolak', 'kedua') : '',
-        p.status === 'aktif' ? `<form class="sebaris" method="post" action="/admin/pengguna/${p.id}/reset-sandi">${csrfInput(csrf)}<button class="tombol kecil ${p.minta_reset ? '' : 'kedua'}" type="submit">Buat tautan sandi baru</button></form>` : '',
+        p.status === 'aktif' ? `<form class="sebaris" method="post" action="/admin/pengguna/${p.id}/reset-sandi">${csrfInput(csrf)}<button class="tombol kecil ${p.minta_reset ? '' : 'kedua'}" type="submit">Kirim tautan sandi baru</button></form>` : '',
         // Tombol berbahaya selalu di paling akhir supaya tidak tertekan tanpa sengaja.
         p.status === 'aktif' ? tombol(p, 'dibekukan', 'Bekukan', 'bahaya') : '',
       ].join('')}</td></tr>`).join('');
   return tata({ judul: 'Pengguna', akun, csrf, pesan, isi: `
 <h1>Pengguna</h1>
-${minta ? `<div class="pemberitahuan info" role="status"><strong>${minta} pengguna meminta kata sandi baru.</strong> Klik <strong>Buat tautan sandi baru</strong> di barisnya, lalu kirim lewat WhatsApp.</div>` : ''}
+${minta ? `<div class="pemberitahuan info" role="status"><strong>${minta} permintaan kata sandi baru gagal terkirim lewat email.</strong> Klik <strong>Kirim tautan sandi baru</strong> di barisnya.</div>` : ''}
+${pengirim ? `<div class="kartu"><p>Email lupa kata sandi dikirim otomatis lewat Gmail yang tersambung di akun <strong>${e(pengirim.nama)}</strong>.</p>
+  <form method="post" action="/admin/uji-email">${csrfInput(csrf)}<button class="tombol kecil kedua" type="submit">Kirim email uji ke saya</button></form></div>`
+    : `<div class="pemberitahuan buruk" role="alert"><strong>Email lupa kata sandi belum bisa terkirim.</strong> Email dikirim lewat Gmail akun Google super admin.
+  Sambungkan Google Anda di <a href="/google">Hubungkan Google</a>, lalu kembali ke sini dan tekan <strong>Kirim email uji ke saya</strong>.</div>`}
 <p><a href="/admin/audit">Log audit</a></p>
 <div class="kartu gulir"><table><thead><tr><th>Nama</th><th>Unit kerja</th><th>Status</th><th>Mendaftar</th><th>Tindakan</th></tr></thead>
 <tbody>${baris || '<tr><td colspan="5">Belum ada pengguna.</td></tr>'}</tbody></table></div>` });
@@ -375,47 +372,53 @@ function halamanPemakaian({ akun, csrf, baris }) {
 // ---------- atur ulang kata sandi ----------
 const fmtTanggalJam = ms => new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'full', timeStyle: 'short' }).format(new Date(ms));
 
-function halamanTautanReset({ akun, csrf, pengguna, tautan, kedaluwarsa }) {
-  const { tampilWa } = require('./profil');
-  const teksWa = `Halo ${pengguna.nama}, ini tautan untuk membuat kata sandi baru Agen Pertanahan. Berlaku 24 jam dan hanya bisa dipakai sekali:\n${tautan}`;
-  const wa = pengguna.nomor_wa ? `https://wa.me/${pengguna.nomor_wa}?text=${encodeURIComponent(teksWa)}` : null;
+// Dipakai bila email otomatis gagal: super admin mengirim tautan dari aplikasi emailnya sendiri.
+function halamanTautanReset({ akun, csrf, pengguna, tautan, kedaluwarsa, galat = null }) {
+  const isi = `Halo ${pengguna.nama},\n\nBuka tautan ini untuk membuat kata sandi baru akun Agen Pertanahan Anda. Berlaku 24 jam dan hanya bisa dipakai sekali:\n\n${tautan}\n\nJangan teruskan email ini kepada siapa pun.`;
+  const mailto = `mailto:${pengguna.email.replace(/[%?&#]/g, encodeURIComponent)}?subject=${encodeURIComponent('Kata sandi baru Agen Pertanahan')}&body=${encodeURIComponent(isi)}`;
   return tata({ judul: 'Tautan kata sandi baru', akun, csrf, isi: `
 <div class="kartu sempit">
-  <h1>Tautan kata sandi baru</h1>
-  <p>Untuk <strong>${e(pengguna.nama)}</strong> (${e(pengguna.email)}).</p>
-  ${wa ? `<a class="tombol" href="${e(wa)}" target="_blank" rel="noopener">Kirim lewat WhatsApp ke ${e(tampilWa(pengguna.nomor_wa))}</a>
-  <p class="pudar">WhatsApp terbuka dengan pesan berisi tautan; tinggal tekan kirim. Nomor ini nomor yang terdaftar di akun pengguna.</p>`
-    : '<div class="pemberitahuan info">Pengguna belum mencatat nomor WhatsApp. Salin tautan di bawah dan kirim lewat email kedinasan atau saluran lain yang Anda yakini milik pengguna itu.</div>'}
+  <h1>Kirim tautan secara manual</h1>
+  <div class="pemberitahuan buruk" role="alert">${galat ? `Email otomatis gagal terkirim: ${e(galat)}` : 'Email otomatis belum aktif karena Google super admin belum tersambung.'}
+    Kirim tautan di bawah ini sendiri ke email pengguna.</div>
+  <p>Untuk <strong>${e(pengguna.nama)}</strong>, email <strong>${e(pengguna.email)}</strong>.</p>
+  <a class="tombol" href="${e(mailto)}">Tulis email ke ${e(pengguna.email)}</a>
+  <p class="pudar">Tombol ini membuka aplikasi email di komputer Anda dengan pesan yang sudah terisi; tinggal tekan Kirim.
+    Bila tidak ada yang terbuka, buka Gmail Anda, tulis email baru ke ${e(pengguna.email)}, lalu salin tautan di bawah ke isi email.</p>
   <p>Tautan:</p>
   <p class="kode">${e(tautan)}</p>
   <ul>
     <li>Berlaku sampai ${e(fmtTanggalJam(kedaluwarsa))} WIB, dan hanya bisa dipakai sekali.</li>
     <li>Pengguna membuat kata sandi barunya sendiri; Anda tidak pernah mengetahuinya.</li>
     <li>Setelah kata sandi diganti, semua sesi lama pengguna itu otomatis keluar.</li>
-    <li>Pastikan tautan dikirim ke orang yang benar. Siapa pun yang memegang tautan ini bisa mengganti kata sandi akun tersebut.</li>
+    <li>Kirim hanya ke email yang tercatat di atas. Siapa pun yang memegang tautan ini bisa mengganti kata sandi akun tersebut.</li>
   </ul>
   <p><a href="/admin/pengguna">Kembali ke Pengguna</a></p>
 </div>` });
 }
 
-const halamanLupaSandi = ({ csrf, terkirim = false, kontak = '', nilai = {} }) => tata({ judul: 'Lupa kata sandi', csrf, isi: `
+const halamanLupaSandi = ({ csrf, terkirim = false, kontak = '', subjek = '', nilai = {} }) => tata({ judul: 'Lupa kata sandi', csrf, isi: `
 <div class="kartu sempit">
   <h1>Lupa kata sandi</h1>
-  ${terkirim ? `<div class="pemberitahuan baik" role="status">Permintaan sudah diterima. Bila email itu terdaftar, super admin akan mengirim tautan untuk membuat kata sandi baru ke nomor WhatsApp yang tercatat di akun Anda.</div>
-  <p>Tautan itu berlaku 24 jam. Setelah menerimanya, buka tautan dan buat kata sandi baru Anda sendiri.</p>`
-    : `<p>Ketik email akun Anda. Super admin akan mengirim tautan untuk membuat kata sandi baru ke nomor WhatsApp yang tercatat di akun Anda.</p>
+  ${terkirim ? `<div class="pemberitahuan baik" role="status">Bila email itu terdaftar dan akunnya aktif, tautan untuk membuat kata sandi baru sudah dikirim ke email tersebut.</div>
+  <ol>
+    <li>Buka email Anda dan cari email berjudul <strong>${e(subjek)}</strong>. Bila tidak ada di Kotak Masuk, periksa folder <strong>Spam</strong>.</li>
+    <li>Klik tautan di dalamnya, lalu ketik kata sandi baru Anda.</li>
+  </ol>
+  <p>Tautan berlaku 1 jam dan hanya bisa dipakai sekali. Bila email belum masuk setelah 10 menit, coba lagi dari halaman ini${kontak ? ' atau hubungi super admin.' : '.'}</p>`
+    : `<p>Ketik email yang Anda pakai untuk masuk. Tautan untuk membuat kata sandi baru akan dikirim ke email itu.</p>
   <form method="post" action="/lupa-sandi" novalidate>${csrfInput(csrf)}
     ${kolom({ nama: 'email', label: 'Email', jenis: 'email', nilai: nilai.email, lengkapi: 'email' })}
-    <button class="tombol" type="submit">Kirim permintaan</button>
+    <button class="tombol" type="submit">Kirim tautan</button>
   </form>`}
-  ${kontak ? `<p class="pudar">Bila mendesak, hubungi super admin: ${e(kontak)}</p>` : ''}
+  ${kontak ? `<p class="pudar">Kontak super admin: ${e(kontak)}</p>` : ''}
   <p><a href="/masuk">Kembali ke halaman Masuk</a></p>
 </div>` });
 
 const halamanAturSandi = ({ csrf, nama, salah = {}, galat = null }) => tata({ judul: 'Buat kata sandi baru', csrf, isi: `
 <div class="kartu sempit">
   <h1>Buat kata sandi baru</h1>
-  ${galat ? `<div class="pemberitahuan buruk" role="alert">${e(galat)}</div>` : `<p>Untuk akun <strong>${e(nama)}</strong>.</p>
+  ${galat ? `<div class="pemberitahuan buruk" role="alert">${e(galat)}</div><p><a href="/lupa-sandi">Minta tautan baru</a></p>` : `<p>Untuk akun <strong>${e(nama)}</strong>.</p>
   <form method="post" novalidate>${csrfInput(csrf)}
     ${kolom({ nama: 'sandi', label: 'Kata sandi baru', jenis: 'password', salah: salah.sandi, lengkapi: 'new-password', bantuan: 'Minimal 10 karakter. Boleh berupa kalimat yang mudah Anda ingat.' })}
     ${kolom({ nama: 'sandi2', label: 'Ulangi kata sandi baru', jenis: 'password', salah: salah.sandi2, lengkapi: 'new-password' })}

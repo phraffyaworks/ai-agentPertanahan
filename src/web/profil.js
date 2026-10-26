@@ -30,12 +30,4 @@ const keDokumen = p => (p ? {
   ttdSuratKeluar: { atas_nama: p.ttd_atas_nama || undefined, jabatan: p.ttd_jabatan, nama: p.ttd_nama, nip: p.ttd_nip },
 } : null);
 
-// Nomor WhatsApp Indonesia disimpan dalam bentuk 628xxxxxxxxx (siap dipakai di tautan wa.me).
-function nomorWa(v) {
-  const d = String(v ?? '').replace(/[\s().-]/g, '');
-  const n = d.startsWith('+62') ? d.slice(1) : d.startsWith('0') ? `62${d.slice(1)}` : d;
-  return /^628\d{7,12}$/.test(n) ? n : null;
-}
-const tampilWa = n => (n ? `0${String(n).slice(2).replace(/(\d{3})(\d{4})(\d+)/, '$1-$2-$3')}` : '');
-
-module.exports = { validasiProfil, keDokumen, angkaNip, nomorWa, tampilWa };
+module.exports = { validasiProfil, keDokumen, angkaNip };

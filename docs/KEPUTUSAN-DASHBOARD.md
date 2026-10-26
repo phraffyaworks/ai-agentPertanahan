@@ -13,3 +13,4 @@ Dikerjakan di cabang `v2-dashboard`; bot versi 1 di `main` tidak berubah sampai 
 - VPS dan domain milik Raffy. Telegram tetap tersedia sebagai satu bot bersama.
 - Nama dan NIP penanda tangan diambil dari profil masing-masing pengguna, bukan dari kode.
 - Lingkup pengguna sementara: Direktorat Penanganan Sengketa Pertanahan (pusat). Format Nota Dinas dan Surat Keluar dipakai bersama. Kantor Pertanahan dan Kantor Wilayah menyusul (format surat per unit dibahas saat itu).
+- Lupa kata sandi cukup lewat email, tanpa WhatsApp. Tautan sekali pakai dikirim ke email terdaftar lewat Gmail akun Google super admin yang tersambung; bila gagal, super admin mengirim tautan itu dari menu Pengguna.

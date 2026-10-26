@@ -40,7 +40,7 @@ function peramban(app) {
   };
 }
 
-const DAFTAR = { nama: 'Budi Santoso', email: 'Budi@Contoh.id', unit_kerja: 'Kantor Pertanahan Kabupaten Bekasi', nomor_wa: '0812 3456 7890', sandi: 'kata sandi panjang', sandi2: 'kata sandi panjang' };
+const DAFTAR = { nama: 'Budi Santoso', email: 'Budi@Contoh.id', unit_kerja: 'Kantor Pertanahan Kabupaten Bekasi', sandi: 'kata sandi panjang', sandi2: 'kata sandi panjang' };
 
 async function buatAdmin(db, app) {
   db.pengguna.buat({ email: 'admin@contoh.id', nama: 'Admin', unit_kerja: 'Pusat', sandi_hash: K.hashSandi('sandi admin rahasia'), peran: 'admin', status: 'aktif' });
@@ -197,18 +197,20 @@ test('tampilan: teks pengguna di-escape dan header keamanan terpasang', async ()
 const fs = require('fs');
 const { HEADER } = require('../src/google/sheets');
 
-function skripTiruan({ versi = '3', header = HEADER } = {}) {
+function skripTiruan({ versi = '3', header = HEADER, gagalKirim = null } = {}) {
   const terdaftar = new Map(); // url -> rahasia
+  const email = []; // email yang dikirim lewat gmailSend
   const buatKlien = ({ url, secret }) => ({
-    call: async (action) => {
+    call: async (action, params) => {
       if (terdaftar.get(url) !== secret) throw new Error('Apps Script: Kode rahasia salah.');
       if (action === 'ping') return { versi, akun: 'budi.uji@gmail.com' };
       if (action === 'header') return header;
       if (action === 'putus') { terdaftar.delete(url); return true; }
+      if (action === 'gmailSend') { if (gagalKirim) throw new Error(gagalKirim); email.push({ url, ...params }); return true; }
       throw new Error(`aksi ${action} tidak ditiru`);
     },
   });
-  return { terdaftar, buatKlien };
+  return { terdaftar, email, buatKlien };
 }
 
 async function penggunaAktifDenganGoogle(opsi = {}) {
@@ -334,48 +336,123 @@ test('lupa sandi: tautan lama gugur saat tautan baru dibuat, dan kedaluwarsa set
   await app.close();
 });
 
-test('lupa sandi: permintaan dari halaman Masuk tampil di super admin; tautan dikirim lewat WhatsApp ke nomor terdaftar', async () => {
-  const { db, app } = siapkan();
+// Menyambungkan Google satu akun langsung di database (tanpa alur kode 6 angka).
+function sambungkanGoogle(db, tiruan, pengguna_id) {
+  const url = `https://script.google.com/macros/s/AKfycbSkripPengguna${pengguna_id}xxxxxxxxxxxx/exec`, rahasia = 's'.repeat(64);
+  tiruan.terdaftar.set(url, rahasia);
+  db.google.simpan({ pengguna_id, url_enc: K.enkripsi(url, konfigurasi.kunciUtama), rahasia_enc: K.enkripsi(rahasia, konfigurasi.kunciUtama),
+    folder_induk_id: 'FOLDER_ID_UJI_1234567890', spreadsheet_id: 'SPREADSHEET_ID_UJI_123456789' });
+  return url;
+}
+async function sampai(syarat, batasMs = 3000) {
+  const akhir = Date.now() + batasMs;
+  while (!syarat()) {
+    if (Date.now() > akhir) throw new Error('Kondisi tidak tercapai');
+    await new Promise(r => setTimeout(r, 10));
+  }
+}
+
+test('lupa sandi: tautan dikirim otomatis ke email terdaftar lewat Gmail super admin, berlaku 1 jam', async () => {
+  const db = createDb(':memory:');
+  const tiruan = skripTiruan();
+  const app = buatAplikasi({ db, konfigurasi, buatKlienGoogle: tiruan.buatKlien });
   const u = peramban(app);
   await u.get('/daftar');
-  const salahWa = await u.post('/daftar', { ...DAFTAR, nomor_wa: '12345' });
-  assert.match(salahWa.body, /Nomor WhatsApp tidak sah/);
   await u.post('/daftar', DAFTAR);
   const p = db.pengguna.olehEmail('budi@contoh.id');
-  assert.strictEqual(p.nomor_wa, '6281234567890');
   db.pengguna.ubahStatus(p.id, 'aktif', null);
+  const { a } = await buatAdmin(db, app);
+  const urlAdmin = sambungkanGoogle(db, tiruan, db.pengguna.olehEmail('admin@contoh.id').id);
 
   // Jawaban sama untuk email terdaftar maupun tidak.
   const tamu = peramban(app);
   await tamu.get('/lupa-sandi');
   const r1 = await tamu.post('/lupa-sandi', { email: 'tidak.ada@contoh.id' });
   const r2 = await tamu.post('/lupa-sandi', { email: 'Budi@Contoh.id' });
-  assert.match(r1.body, /Permintaan sudah diterima/);
+  assert.match(r1.body, /tautan untuk membuat kata sandi baru sudah dikirim ke email tersebut/);
+  assert.match(r1.body, /berjudul <strong>Kata sandi baru Agen Pertanahan<\/strong>/);
   assert.strictEqual(r1.body.replace(/value="[^"]*"/g, ''), r2.body.replace(/value="[^"]*"/g, ''));
-  assert.ok(db.pengguna.olehId(p.id).minta_reset);
-
-  const { a } = await buatAdmin(db, app);
-  const daftar = await a.get('/admin/pengguna');
-  assert.match(daftar.body, /1 pengguna meminta kata sandi baru/);
-  assert.match(daftar.body, /Minta sandi baru/);
-  assert.match(daftar.body, /WA 0812-3456-7890/);
-  const t = await a.post(`/admin/pengguna/${p.id}/reset-sandi`);
-  assert.match(t.body, /href="https:\/\/wa\.me\/6281234567890\?text=[^"]*atur-sandi%2F/);
-  assert.match(t.body, /Kirim lewat WhatsApp ke 0812-3456-7890/);
+  await sampai(() => tiruan.email.length === 1);
+  const m = tiruan.email[0];
+  assert.strictEqual(m.url, urlAdmin);
+  assert.strictEqual(m.to, 'budi@contoh.id');
+  assert.strictEqual(m.subject, 'Kata sandi baru Agen Pertanahan');
+  assert.match(m.body, /^Halo Budi Santoso,/);
+  const tautan = /\/atur-sandi\/[\w-]+/.exec(m.body)[0];
+  const kode = db.db.prepare("SELECT kedaluwarsa FROM kode_pasang WHERE jenis = 'reset'").get();
+  assert.ok(Math.abs(kode.kedaluwarsa - (Date.now() + 3600e3)) < 60e3);
+  await sampai(() => db.audit.terbaru().some(x => x.aksi === 'reset_email_terkirim' && x.sasaran_id === p.id));
   assert.strictEqual(db.pengguna.olehId(p.id).minta_reset, null);
-  assert.doesNotMatch((await a.get('/admin/pengguna')).body, /meminta kata sandi baru/);
+
+  // Permintaan ulang dalam 10 menit tidak mengirim email lagi.
+  await tamu.post('/lupa-sandi', { email: 'budi@contoh.id' });
+  await new Promise(r => setTimeout(r, 50));
+  assert.strictEqual(tiruan.email.length, 1);
+
+  const ok = await tamu.post(tautan, { sandi: 'sandi baru yang panjang', sandi2: 'sandi baru yang panjang' });
+  assert.match(ok.body, /Kata sandi baru tersimpan/);
+
+  // Super admin: keterangan pengirim, email uji, dan kirim tautan dari daftar pengguna.
+  const hal = await a.get('/admin/pengguna');
+  assert.match(hal.body, /dikirim otomatis lewat Gmail yang tersambung di akun <strong>Admin<\/strong>/);
+  assert.match((await a.post('/admin/uji-email')).body, /Email uji sudah dikirim ke admin@contoh\.id/);
+  assert.strictEqual(tiruan.email[1].to, 'admin@contoh.id');
+  await a.get('/admin/pengguna');
+  const kirimUlang = await a.post(`/admin/pengguna/${p.id}/reset-sandi`);
+  assert.match(kirimUlang.body, /Tautan kata sandi baru sudah dikirim ke budi@contoh\.id\. Berlaku 24 jam\./);
+  assert.doesNotMatch(kirimUlang.body, /atur-sandi\//);
+  assert.strictEqual(tiruan.email[2].to, 'budi@contoh.id');
+  assert.ok(db.audit.terbaru().some(x => x.aksi === 'reset_sandi_dikirim' && x.sasaran_id === p.id));
   await app.close();
 });
 
-test('profil: nomor WhatsApp bisa diubah sendiri dan divalidasi', async () => {
-  const { db, app } = siapkan();
-  const id = db.pengguna.buat({ email: 'w@contoh.id', nama: 'W', unit_kerja: 'U', sandi_hash: K.hashSandi('sandi pengguna w'), status: 'aktif' });
-  const u = peramban(app);
-  await u.get('/masuk');
-  await u.post('/masuk', { email: 'w@contoh.id', sandi: 'sandi pengguna w' });
-  await u.get('/profil');
-  assert.strictEqual((await u.post('/profil/kontak', { nomor_wa: '021-555' })).statusCode, 422);
-  assert.match((await u.post('/profil/kontak', { nomor_wa: '+62 813 1111 2222' })).body, /Nomor WhatsApp tersimpan/);
-  assert.strictEqual(db.pengguna.olehId(id).nomor_wa, '6281311112222');
+test('lupa sandi: email gagal terkirim tampil di super admin, lalu tautan dikirim manual lewat aplikasi email', async () => {
+  const db = createDb(':memory:');
+  const tiruan = skripTiruan({ gagalKirim: 'Apps Script: Service invoked too many times for one day: email.' });
+  const app = buatAplikasi({ db, konfigurasi, buatKlienGoogle: tiruan.buatKlien });
+  const id = db.pengguna.buat({ email: 'budi@contoh.id', nama: 'Budi', unit_kerja: 'U', sandi_hash: K.hashSandi('sandi lama sekali'), status: 'aktif' });
+  const { a } = await buatAdmin(db, app);
+
+  // Google super admin belum tersambung.
+  assert.match((await a.get('/admin/pengguna')).body, /Email lupa kata sandi belum bisa terkirim/);
+  const uji = await a.post('/admin/uji-email');
+  assert.strictEqual(uji.statusCode, 502);
+  assert.match(uji.body, /Google super admin belum tersambung/);
+  const tamu = peramban(app);
+  await tamu.get('/lupa-sandi');
+  await tamu.post('/lupa-sandi', { email: 'budi@contoh.id' });
+  await sampai(() => db.pengguna.olehId(id).minta_reset);
+  assert.ok(db.audit.terbaru().some(x => x.aksi === 'reset_email_gagal' && x.sasaran_id === id));
+  const daftar = await a.get('/admin/pengguna');
+  assert.match(daftar.body, /1 permintaan kata sandi baru gagal terkirim lewat email/);
+  assert.match(daftar.body, /Email sandi gagal terkirim/);
+  const t = await a.post(`/admin/pengguna/${id}/reset-sandi`);
+  assert.match(t.body, /Google super admin belum tersambung/);
+  assert.match(t.body, /href="mailto:budi@contoh\.id\?subject=Kata%20sandi%20baru%20Agen%20Pertanahan&amp;body=[^"]*atur-sandi%2F/);
+  assert.strictEqual(db.pengguna.olehId(id).minta_reset, null);
+  assert.doesNotMatch((await a.get('/admin/pengguna')).body, /gagal terkirim lewat email/);
+
+  // Google tersambung tetapi Gmail menolak: alasannya ditampilkan.
+  sambungkanGoogle(db, tiruan, db.pengguna.olehEmail('admin@contoh.id').id);
+  await a.get('/admin/pengguna');
+  const t2 = await a.post(`/admin/pengguna/${id}/reset-sandi`);
+  assert.match(t2.body, /Email otomatis gagal terkirim: Apps Script: Service invoked too many times/);
+  assert.strictEqual((await peramban(app).get(/\/atur-sandi\/[\w-]+/.exec(t2.body)[0])).statusCode, 200);
   await app.close();
+});
+
+test('database: kolom nomor WhatsApp lama dihapus saat pembaruan, data akun tetap ada', () => {
+  const file = require('path').join(require('os').tmpdir(), `uji-migrasi-${process.pid}-${Date.now()}.db`);
+  let db = createDb(file);
+  db.pengguna.buat({ email: 'lama@contoh.id', nama: 'Lama', unit_kerja: 'U', sandi_hash: 'x', status: 'aktif' });
+  // Meniru database versi 2 yang masih punya nomor WhatsApp.
+  db.db.exec("ALTER TABLE pengguna ADD COLUMN nomor_wa TEXT; UPDATE pengguna SET nomor_wa = '6281234567890'; PRAGMA user_version = 2;");
+  db.tutup();
+  db = createDb(file);
+  const kolom = db.db.prepare('PRAGMA table_info(pengguna)').all().map(k => k.name);
+  assert.ok(!kolom.includes('nomor_wa'));
+  assert.strictEqual(db.db.prepare('PRAGMA user_version').get().user_version, 3);
+  assert.strictEqual(db.pengguna.olehEmail('lama@contoh.id').nama, 'Lama');
+  db.tutup();
+  for (const f of [file, `${file}-wal`, `${file}-shm`]) fs.rmSync(f, { force: true });
 });

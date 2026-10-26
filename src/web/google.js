@@ -90,7 +90,14 @@ function buatLayananGoogle({ db, kunci, buatKlien = createAppsScriptClient }) {
 
   const putuskanSkrip = ({ url, rahasia }) => buatKlien({ url, secret: rahasia }).call('putus');
 
-  return { kodeUntuk, periksa, putuskanSkrip, terimaPasangan, sambungan, untukPengguna, UMUR_KODE };
+  // Mengirim email dari Gmail akun Google milik pengguna ini (dipakai untuk email dashboard lewat super admin).
+  async function kirimEmail(pengguna_id, { to, subject, body }) {
+    const s = sambungan(pengguna_id);
+    if (!s) throw new Error('Google belum tersambung.');
+    return buatKlien({ url: s.url, secret: s.rahasia }).call('gmailSend', { to, subject, body });
+  }
+
+  return { kodeUntuk, periksa, putuskanSkrip, terimaPasangan, sambungan, untukPengguna, kirimEmail, UMUR_KODE };
 }
 
 module.exports = { buatLayananGoogle, VERSI_SKRIP, RE_URL };

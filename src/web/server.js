@@ -3,8 +3,9 @@
 const Fastify = require('fastify');
 const K = require('./keamanan');
 const H = require('./halaman');
-const { validasiProfil, nomorWa, tampilWa } = require('./profil');
+const { validasiProfil } = require('./profil');
 const { buatLayananGoogle } = require('./google');
+const { buatSurel } = require('./surel');
 
 const UMUR_SESI = { pengguna: 7 * 24 * 3600e3, admin: 12 * 3600e3 };
 const BATAS_GAGAL = 5, KUNCI_MS = 15 * 60e3;
@@ -21,6 +22,7 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle, buatLayan
   const google = buatLayananGoogle({ db, kunci, ...(buatKlienGoogle ? { buatKlien: buatKlienGoogle } : {}) });
   // Layanan agen dibuat oleh pemanggil (butuh layanan Google ini); tanpa agen, menu Chat menampilkan pemberitahuan.
   const agenWeb = buatLayanan ? buatLayanan({ google }) : null;
+  const surel = buatSurel({ db, google });
   const templateUrl = konfigurasi.templateGoogleId ? `https://docs.google.com/spreadsheets/d/${konfigurasi.templateGoogleId}/copy` : null;
 
   const app = Fastify({ logger: log, trustProxy: konfigurasi.percayaProksi, bodyLimit: 1024 * 1024 });
@@ -107,10 +109,8 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle, buatLayan
   app.get('/daftar', async (req, reply) => (req.akun ? reply.redirect('/') : kirim(reply, H.halamanDaftar({ csrf: csrfPra(req, reply) }))));
   app.post('/daftar', batasKirim, async (req, reply) => {
     const b = req.body || {};
-    const nilai = { nama: String(b.nama || '').trim(), email: String(b.email || '').trim().toLowerCase(), unit_kerja: String(b.unit_kerja || '').trim(), nomor_wa: String(b.nomor_wa || '').trim() };
+    const nilai = { nama: String(b.nama || '').trim(), email: String(b.email || '').trim().toLowerCase(), unit_kerja: String(b.unit_kerja || '').trim() };
     const salah = {};
-    const wa = nomorWa(nilai.nomor_wa);
-    if (!wa) salah.nomor_wa = 'Nomor WhatsApp tidak sah. Contoh: 0812-3456-7890';
     if (!nilai.nama) salah.nama = 'Wajib diisi.';
     if (!RE_EMAIL.test(nilai.email)) salah.email = 'Alamat email tidak sah. Contoh: budi.santoso@gmail.com';
     else if (db.pengguna.olehEmail(nilai.email)) salah.email = 'Email ini sudah terdaftar. Silakan masuk.';
@@ -120,7 +120,7 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle, buatLayan
     if (Object.values(nilai).some(v => v.length > 200)) salah.nama = salah.nama || 'Isian terlalu panjang.';
     if (Object.keys(salah).length) return kirim(reply, H.halamanDaftar({ csrf: csrfPra(req, reply), nilai, salah }), 422);
 
-    const id = db.pengguna.buat({ ...nilai, nomor_wa: wa, sandi_hash: K.hashSandi(b.sandi) });
+    const id = db.pengguna.buat({ ...nilai, sandi_hash: K.hashSandi(b.sandi) });
     db.audit.catat({ pelaku_id: id, sasaran_id: id, aksi: 'daftar', ip: ip(req) });
     return kirim(reply, H.halamanMasuk({ csrf: csrfPra(req, reply), nilai: { email: nilai.email },
       pesan: { jenis: 'baik', teks: 'Pendaftaran berhasil. Akun Anda menunggu persetujuan pengelola; Anda tetap bisa masuk untuk melihat statusnya.' } }));
@@ -203,7 +203,7 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle, buatLayan
 
   // ---------- profil ----------
   const halProfil = (req, ekstra = {}) => H.halamanProfil({ akun: req.akun, csrf: req.akun.csrf,
-    nilai: db.profil.ambil(req.akun.pengguna_id) || { kota: 'Jakarta' }, nomorWa: tampilWa(db.pengguna.olehId(req.akun.pengguna_id).nomor_wa), ...ekstra });
+    nilai: db.profil.ambil(req.akun.pengguna_id) || { kota: 'Jakarta' }, ...ekstra });
   app.get('/profil', { preHandler: perluAktif }, async (req, reply) => kirim(reply, halProfil(req)));
   app.post('/profil', { preHandler: perluAktif }, async (req, reply) => {
     const { data, salah } = validasiProfil(req.body || {});
@@ -211,13 +211,6 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle, buatLayan
     db.profil.simpan(req.akun.pengguna_id, data);
     catat(req, 'profil_disimpan');
     return kirim(reply, halProfil(req, { nilai: data, pesan: { jenis: 'baik', teks: 'Profil tersimpan.' } }));
-  });
-  app.post('/profil/kontak', { preHandler: perluAktif }, async (req, reply) => {
-    const wa = nomorWa(req.body?.nomor_wa);
-    if (!wa) return kirim(reply, halProfil(req, { nomorWa: String(req.body?.nomor_wa || ''), salahWa: 'Nomor WhatsApp tidak sah. Contoh: 0812-3456-7890' }), 422);
-    db.pengguna.ubahNomorWa(req.akun.pengguna_id, wa);
-    catat(req, 'nomor_wa_diubah');
-    return kirim(reply, halProfil(req, { pesan: { jenis: 'baik', teks: 'Nomor WhatsApp tersimpan.' } }));
   });
 
 
@@ -344,37 +337,75 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle, buatLayan
 
 
   // ---------- lupa kata sandi ----------
-  // Super admin membuat tautan sekali pakai (berlaku 24 jam); pengguna membuat kata sandi barunya sendiri.
-  const UMUR_RESET = 24 * 3600e3;
+  // Tautan sekali pakai dikirim ke email terdaftar lewat Gmail super admin; pengguna membuat kata sandi barunya sendiri.
+  // Bila email gagal terkirim, permintaannya tampil di Super admin → Pengguna untuk dikirim ulang.
+  const UMUR_RESET = { sendiri: 3600e3, admin: 24 * 3600e3 };
+  const JEDA_MINTA = 10 * 60e3;
+  const mintaTerakhir = new Map(); // pengguna_id -> waktu permintaan terakhir dari halaman Lupa kata sandi
   const alamatDasar = req => konfigurasi.alamat || `${req.protocol}://${req.headers.host}`;
-  app.post('/admin/pengguna/:id/reset-sandi', { preHandler: perluAdmin }, async (req, reply) => {
-    const sasaran = db.pengguna.olehId(Number(req.params.id));
-    if (!sasaran || sasaran.peran === 'admin' || sasaran.status !== 'aktif') {
-      return kirim(reply, H.halamanAdminPengguna({ akun: req.akun, csrf: req.akun.csrf, daftar: db.pengguna.daftar(),
-        pesan: { jenis: 'buruk', teks: 'Tautan kata sandi hanya bisa dibuat untuk pengguna aktif. Untuk akun super admin, pakai npm run atur-sandi di VPS.' } }), 400);
-    }
+  // Membuat tautan baru (tautan lama gugur) lalu mengirimnya ke email pengguna.
+  async function kirimTautan(req, p, umurMs) {
     const token = K.tokenAcak(32);
-    db.kodePasang.buat({ jenis: 'reset', kode_hash: K.sha256(token), pengguna_id: sasaran.id, umurMs: UMUR_RESET });
-    db.pengguna.hapusMintaReset(sasaran.id);
-    catat(req, 'reset_sandi_dibuat', null, sasaran.id);
-    return kirim(reply, H.halamanTautanReset({ akun: req.akun, csrf: req.akun.csrf, pengguna: sasaran,
-      tautan: `${alamatDasar(req)}/atur-sandi/${token}`, kedaluwarsa: Date.now() + UMUR_RESET }));
-  });
+    db.kodePasang.buat({ jenis: 'reset', kode_hash: K.sha256(token), pengguna_id: p.id, umurMs });
+    const t = { tautan: `${alamatDasar(req)}/atur-sandi/${token}`, kedaluwarsa: Date.now() + umurMs };
+    try {
+      await surel.kirimTautanSandi({ pengguna: p, ...t, alamat: alamatDasar(req) });
+      db.pengguna.hapusMintaReset(p.id);
+      return { ...t, terkirim: true };
+    } catch (err) {
+      return { ...t, terkirim: false, galat: err.message };
+    }
+  }
   const ambilReset = token => {
     const r = /^[\w-]{40,}$/.test(String(token || '')) ? db.kodePasang.cek('reset', K.sha256(token)) : null;
     return r ? { r, p: db.pengguna.olehId(r.pengguna_id) } : null;
   };
-  // Permintaan dari halaman Masuk. Jawabannya selalu sama, supaya tidak bisa dipakai menebak email terdaftar.
-  app.get('/lupa-sandi', async (req, reply) => kirim(reply, H.halamanLupaSandi({ csrf: csrfOf(req, reply), kontak: konfigurasi.kontakAdmin })));
+  const halPengguna = (req, pesan) => H.halamanAdminPengguna({ akun: req.akun, csrf: req.akun.csrf, daftar: db.pengguna.daftar(), pengirim: surel.pengirim(), pesan });
+  app.post('/admin/pengguna/:id/reset-sandi', { preHandler: perluAdmin }, async (req, reply) => {
+    const sasaran = db.pengguna.olehId(Number(req.params.id));
+    if (!sasaran || sasaran.peran === 'admin' || sasaran.status !== 'aktif') {
+      return kirim(reply, halPengguna(req, { jenis: 'buruk', teks: 'Tautan kata sandi hanya bisa dikirim untuk pengguna aktif. Untuk akun super admin, pakai Lupa kata sandi di halaman Masuk atau npm run atur-sandi di VPS.' }), 400);
+    }
+    const h = await kirimTautan(req, sasaran, UMUR_RESET.admin);
+    if (h.terkirim) {
+      catat(req, 'reset_sandi_dikirim', null, sasaran.id);
+      return kirim(reply, halPengguna(req, { jenis: 'baik', teks: `Tautan kata sandi baru sudah dikirim ke ${sasaran.email}. Berlaku 24 jam.` }));
+    }
+    // Email gagal: super admin mengirim tautan itu sendiri dari aplikasi emailnya.
+    db.pengguna.hapusMintaReset(sasaran.id);
+    catat(req, 'reset_sandi_dibuat', { galat: h.galat }, sasaran.id);
+    return kirim(reply, H.halamanTautanReset({ akun: req.akun, csrf: req.akun.csrf, pengguna: sasaran, tautan: h.tautan,
+      kedaluwarsa: h.kedaluwarsa, galat: surel.pengirim() ? h.galat : null }));
+  });
+  app.post('/admin/uji-email', { preHandler: perluAdmin, ...batasKirim }, async (req, reply) => {
+    const p = db.pengguna.olehId(req.akun.pengguna_id);
+    try {
+      const dari = await surel.kirimUji({ pengguna: p, alamat: alamatDasar(req) });
+      catat(req, 'uji_email');
+      return kirim(reply, halPengguna(req, { jenis: 'baik', teks: `Email uji sudah dikirim ke ${p.email} lewat Gmail yang tersambung di akun ${dari.nama}. Periksa Kotak Masuk; bila tidak ada, periksa folder Spam.` }));
+    } catch (err) {
+      return kirim(reply, halPengguna(req, { jenis: 'buruk', teks: `Email uji gagal terkirim: ${err.message}` }), 502);
+    }
+  });
+  // Permintaan dari halaman Masuk. Jawabannya selalu sama dan email dikirim di latar belakang,
+  // supaya isi maupun lama jawaban tidak bisa dipakai menebak email terdaftar.
+  const halLupa = (req, reply, terkirim = false) => H.halamanLupaSandi({ csrf: csrfOf(req, reply), terkirim, kontak: konfigurasi.kontakAdmin, subjek: surel.SUBJEK_SANDI });
+  app.get('/lupa-sandi', async (req, reply) => kirim(reply, halLupa(req, reply)));
   app.post('/lupa-sandi', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
     const p = db.pengguna.olehEmail(String(req.body?.email || '').trim().toLowerCase());
-    if (p && p.status === 'aktif' && p.peran !== 'admin' && !(p.minta_reset && Date.now() - p.minta_reset < 10 * 60e3)) {
-      db.pengguna.tandaiMintaReset(p.id);
-      db.audit.catat({ sasaran_id: p.id, aksi: 'minta_reset_sandi', ip: ip(req) });
+    if (p && p.status === 'aktif' && !(Date.now() - (mintaTerakhir.get(p.id) || 0) < JEDA_MINTA)) {
+      mintaTerakhir.set(p.id, Date.now());
+      const dari = ip(req);
+      db.audit.catat({ sasaran_id: p.id, aksi: 'minta_reset_sandi', ip: dari });
+      kirimTautan(req, p, UMUR_RESET.sendiri).then(h => {
+        if (h.terkirim) return db.audit.catat({ sasaran_id: p.id, aksi: 'reset_email_terkirim', ip: dari });
+        db.pengguna.tandaiMintaReset(p.id);
+        db.audit.catat({ sasaran_id: p.id, aksi: 'reset_email_gagal', rincian: { galat: h.galat }, ip: dari });
+      }).catch(err => req.log.error(err));
     }
-    return kirim(reply, H.halamanLupaSandi({ csrf: csrfOf(req, reply), terkirim: true, kontak: konfigurasi.kontakAdmin }));
+    return kirim(reply, halLupa(req, reply, true));
   });
-  const GALAT_RESET = 'Tautan ini salah, sudah dipakai, atau sudah kedaluwarsa. Minta tautan baru kepada super admin.';
+  const GALAT_RESET = 'Tautan ini salah, sudah dipakai, atau sudah kedaluwarsa. Minta tautan baru lewat Lupa kata sandi di halaman Masuk.';
   app.get('/atur-sandi/:token', async (req, reply) => {
     const x = ambilReset(req.params.token);
     return kirim(reply, H.halamanAturSandi({ csrf: csrfOf(req, reply), nama: x?.p.nama, galat: x ? null : GALAT_RESET }), x ? 200 : 404);
@@ -397,12 +428,11 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle, buatLayan
 
   // ---------- super admin ----------
   app.get('/admin', { preHandler: perluAdmin }, async (req, reply) => reply.redirect('/admin/pengguna'));
-  app.get('/admin/pengguna', { preHandler: perluAdmin }, async (req, reply) =>
-    kirim(reply, H.halamanAdminPengguna({ akun: req.akun, csrf: req.akun.csrf, daftar: db.pengguna.daftar() })));
+  app.get('/admin/pengguna', { preHandler: perluAdmin }, async (req, reply) => kirim(reply, halPengguna(req)));
   app.post('/admin/pengguna/:id/status', { preHandler: perluAdmin }, async (req, reply) => {
     const sasaran = db.pengguna.olehId(Number(req.params.id));
     const status = String(req.body?.status || '');
-    const tampil = (pesan, kode = 200) => kirim(reply, H.halamanAdminPengguna({ akun: req.akun, csrf: req.akun.csrf, daftar: db.pengguna.daftar(), pesan }), kode);
+    const tampil = (pesan, kode = 200) => kirim(reply, halPengguna(req, pesan), kode);
     if (!sasaran) return tampil({ jenis: 'buruk', teks: 'Pengguna tidak ditemukan.' }, 404);
     if (sasaran.peran === 'admin') return tampil({ jenis: 'buruk', teks: 'Status super admin tidak bisa diubah dari sini.' }, 400);
     if (!['aktif', 'dibekukan', 'ditolak'].includes(status)) return tampil({ jenis: 'buruk', teks: 'Tindakan tidak dikenal.' }, 400);
@@ -447,11 +477,12 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle, buatLayan
     return kirim(reply, H.halamanGalat({ judul: 'Terjadi kesalahan', teks: 'Maaf, terjadi kesalahan di server. Coba lagi beberapa saat lagi.' }), 500);
   });
 
-  // Membersihkan sesi kedaluwarsa dan data sementara 2FA setiap jam.
+  // Membersihkan sesi kedaluwarsa, data sementara 2FA, dan catatan jeda lupa kata sandi setiap jam.
   const pembersih = setInterval(() => {
     db.sesi.bersihkan();
     const kini = Date.now();
     for (const [t, v] of pra2fa) if (v.kedaluwarsa < kini) pra2fa.delete(t);
+    for (const [id, w] of mintaTerakhir) if (kini - w > JEDA_MINTA) mintaTerakhir.delete(id);
   }, 3600e3);
   pembersih.unref();
   app.addHook('onClose', async () => clearInterval(pembersih));

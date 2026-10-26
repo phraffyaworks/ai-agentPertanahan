@@ -83,7 +83,7 @@ async function main() {
   console.log('\nID template Google: lihat docs/TEMPLATE-GOOGLE.md. Boleh dikosongkan dulu dan diisi nanti dengan menjalankan pemasangan lagi.');
   const template = await tanya('ID template Google', lama.GOOGLE_TEMPLATE_ID || '');
 
-  console.log('\nKontak super admin yang ditampilkan di halaman Lupa kata sandi (boleh kosong). Contoh: WhatsApp 0812-3456-7890 (Raffy)');
+  console.log('\nKontak super admin yang ditampilkan di halaman Lupa kata sandi (boleh kosong). Contoh: Email pengelola.agen@gmail.com (Raffy)');
   const kontak = await tanya('Kontak super admin', lama.ADMIN_KONTAK || '');
 
   console.log('\nKunci Claude API untuk dashboard (dari Claude Console → API keys). Disarankan kunci baru khusus dashboard,');

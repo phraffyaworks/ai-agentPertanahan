@@ -22,7 +22,7 @@ function muatKonfigurasiWeb() {
     kunciUtama: kunciUtama(ambil('APP_MASTER_KEY', '')),
     // ID spreadsheet template (berisi skrip apps-script/template) yang dibagikan "siapa saja yang memiliki link".
     templateGoogleId: ambil('GOOGLE_TEMPLATE_ID', ''),
-    // Kontak super admin yang ditampilkan di halaman Lupa kata sandi (opsional), mis. "WhatsApp 0812-3456-7890 (Raffy)".
+    // Kontak super admin yang ditampilkan di halaman Lupa kata sandi (opsional), mis. "Email pengelola.agen@gmail.com (Raffy)".
     kontakAdmin: ambil('ADMIN_KONTAK', ''),
     // Agen: kunci Claude milik layanan (dipakai pengguna dengan saldo layanan), model, dan tingkat berpikir.
     claude: { apiKey: ambil('ANTHROPIC_API_KEY', ''), model: ambil('CLAUDE_MODEL', 'claude-sonnet-5-5'), effort: ambil('CLAUDE_EFFORT', 'medium') },
