@@ -45,6 +45,21 @@ th{font-size:.9rem;color:var(--pudar)}
 .gulir{overflow-x:auto}
 code,.kode{font-family:ui-monospace,Consolas,monospace;background:var(--info-bg);padding:2px 6px;border-radius:4px;word-break:break-all}
 .pudar{color:var(--pudar)}
+.chat{display:flex;flex-direction:column;gap:12px;padding:8px 0 16px}
+.pesan{display:flex;flex-direction:column;max-width:85%}.pesan.saya{align-self:flex-end;align-items:flex-end}.pesan.agen{align-self:flex-start}
+.gelembung{background:var(--kartu);border:1px solid var(--garis);border-radius:12px;padding:10px 14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.pesan.saya .gelembung{background:var(--info-bg);border-color:transparent}
+.waktu{font-size:.75rem;color:var(--pudar);margin-top:2px}
+.lampiran{font-size:.85rem;color:var(--pudar);margin-top:4px}
+.kartu-setuju{border:2px solid var(--utama);border-radius:12px;padding:14px;background:var(--kartu);max-width:85%}
+.kartu-setuju .ringkasan{white-space:pre-wrap;margin:8px 0;overflow-wrap:anywhere}
+.info-chat{align-self:center;font-size:.85rem;color:var(--pudar)}
+.kirim{position:sticky;bottom:0;background:var(--bg);padding:12px 0;border-top:1px solid var(--garis)}
+.kirim textarea{min-height:56px;resize:vertical}.kirim .baris{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.kirim .tombol{margin-top:0}.status-agen{min-height:1.4em;color:var(--pudar);font-size:.9rem}
+.gelembung pre,.gelembung code{white-space:pre-wrap}
+.judul-chat{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.judul-chat h1{margin:0 auto 0 0}
+.label-tipis{font-weight:400;color:var(--pudar);margin:0 0 4px}.pilih-berkas{width:auto;flex:1 1 220px}
 .kode-besar{font:700 2.2rem/1.2 ui-monospace,Consolas,monospace;letter-spacing:.3em;background:var(--info-bg);border-radius:10px;padding:12px 18px;display:inline-block;margin:8px 0}
 .bagian-langkah{counter-reset:l;list-style:none;padding:0}.bagian-langkah>li{counter-increment:l;position:relative;padding:0 0 20px 48px}
 .bagian-langkah>li::before{content:counter(l);position:absolute;left:0;top:0;width:32px;height:32px;border-radius:50%;background:var(--utama);color:var(--utama-teks);display:grid;place-items:center;font-weight:700}
@@ -54,7 +69,7 @@ code,.kode{font-family:ui-monospace,Consolas,monospace;background:var(--info-bg)
 
 function tata({ judul, isi, akun = null, csrf = '', pesan = null, skrip = null }) {
   const menu = akun ? `<nav>
-      ${akun.status === 'aktif' && !akun.perlu2fa ? '<a href="/mulai">Mulai</a> <a href="/profil">Profil</a>' : ''}
+      ${akun.status === 'aktif' && !akun.perlu2fa ? '<a href="/chat">Chat</a> <a href="/mulai">Mulai</a> <a href="/profil">Profil</a> <a href="/pemakaian">Pemakaian</a>' : ''}
       ${akun.peran === 'admin' && akun.status === 'aktif' && !akun.perlu2fa ? '<a href="/admin">Super admin</a>' : ''}
       <form method="post" action="/keluar"><input type="hidden" name="_csrf" value="${e(csrf)}"><button type="submit">Keluar</button></form>
     </nav>` : '<nav><a href="/masuk">Masuk</a> <a href="/daftar">Daftar</a></nav>';
@@ -282,6 +297,68 @@ function halamanGoogle({ akun, csrf, sambungan, kode, templateUrl, pesan }) {
 </ul></div>` });
 }
 
+// ---------- chat ----------
+const { keHtml } = require('../telegram/format');
+const jamMenit = ms => new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }).format(new Date(ms));
+
+function renderPersetujuan(x, { menunggu = false, keputusan = null } = {}) {
+  const status = menunggu
+    ? `<div><button class="tombol kecil" type="button" data-setuju="1" data-id="${x.id}">Setujui</button>
+       <button class="tombol kecil kedua" type="button" data-setuju="0" data-id="${x.id}">Tolak</button></div>
+       <p class="pudar">Atau ketik perubahan yang Anda inginkan di kotak pesan; pesan Anda dihitung sebagai Tolak beserta catatannya.</p>`
+    : keputusan ? `<span class="lencana ${keputusan.setuju ? 'aktif' : 'ditolak'}">${keputusan.setuju ? 'Disetujui' : 'Ditolak'}</span>${keputusan.catatan ? ` <span class="pudar">${e(keputusan.catatan)}</span>` : ''}`
+      : '<span class="lencana">Kedaluwarsa</span> <span class="pudar">Agen dimulai ulang sebelum dijawab; tidak ada yang dikerjakan.</span>';
+  return `<div class="kartu-setuju" id="s${x.id}"><strong>Persetujuan diperlukan</strong><div class="ringkasan">${e(x.ringkasan)}</div>${status}</div>`;
+}
+
+function renderEntri(x, opsi = {}) {
+  switch (x.jenis) {
+    case 'pengguna': return `<div class="pesan saya" id="e${x.id}"><div class="gelembung">${e(x.teks)}${(x.berkas || []).length
+      ? `<div class="lampiran">Lampiran: ${x.berkas.map(b => e(`${b.id} ${b.nama}`)).join(', ')}</div>` : ''}</div><div class="waktu">${jamMenit(x.waktu)}</div></div>`;
+    case 'agen': return `<div class="pesan agen" id="e${x.id}"><div class="gelembung">${keHtml(String(x.teks || ''))}</div><div class="waktu">${jamMenit(x.waktu)}</div></div>`;
+    case 'dokumen': return `<div class="pesan agen" id="e${x.id}"><div class="gelembung">Dokumen siap: <a href="/unduh/${e(x.berkasId)}">${e(x.nama)}</a><div class="lampiran">Juga tersimpan di folder kasus di Google Drive Anda.</div></div></div>`;
+    case 'persetujuan': return renderPersetujuan(x, opsi);
+    case 'galat': return `<div class="pemberitahuan buruk" id="e${x.id}">${e(x.teks)}</div>`;
+    case 'info': return `<div class="info-chat" id="e${x.id}">${e(x.teks)}</div>`;
+    default: return '';
+  }
+}
+
+function halamanChat({ akun, csrf, entri, menunggu, sibuk }) {
+  const keputusan = new Map(entri.filter(x => x.jenis === 'keputusan').map(x => [x.untuk, x]));
+  const isi = entri.map(x => renderEntri(x, { menunggu: menunggu.has(x.id), keputusan: keputusan.get(x.id) })).join('');
+  const terakhir = entri.length ? entri[entri.length - 1].id : 0;
+  return tata({ judul: 'Chat', akun, csrf, skrip: '/aset/chat.js', isi: `
+<div class="judul-chat"><h1>Chat dengan agen</h1>
+  <form class="sebaris" method="post" action="/chat/baru">${csrfInput(csrf)}<button class="tombol kecil kedua" type="submit">Percakapan baru</button></form></div>
+<p class="pudar">Kirim PDF pengaduan, minta draf Telaahan, cek email, atau atur jadwal. Setiap perubahan data menunggu tombol Setujui dari Anda.</p>
+<div class="chat" id="percakapan" data-terakhir="${terakhir}">${isi || '<div class="info-chat" id="kosong">Belum ada percakapan. Mulailah dengan menyapa agen atau mengirim PDF pengaduan.</div>'}</div>
+<form class="kirim" id="form-kirim" data-csrf="${e(csrf)}">
+  <div class="status-agen" id="status-agen" role="status">${sibuk ? 'Agen sedang bekerja…' : ''}</div>
+  <label for="teks" class="label-tipis">Pesan (Enter untuk kirim, Shift+Enter untuk baris baru)</label>
+  <textarea id="teks" name="teks" placeholder="Tulis pesan…"></textarea>
+  <div class="baris"><input type="file" id="berkas" name="berkas" multiple accept=".pdf,.docx,.doc,.xlsx,image/*" class="pilih-berkas">
+    <button class="tombol" type="submit" id="tombol-kirim">Kirim</button></div>
+</form>` });
+}
+
+// ---------- pemakaian ----------
+const angka = n => Number(n || 0).toLocaleString('id-ID');
+const dolar = n => `US$${Number(n || 0).toLocaleString('id-ID', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
+
+function halamanPemakaian({ akun, csrf, baris }) {
+  const total = baris.reduce((t, r) => ({ panggilan: t.panggilan + r.panggilan, masuk: t.masuk + r.token_masuk + r.token_cache_baca + r.token_cache_tulis,
+    keluar: t.keluar + r.token_keluar, biaya: t.biaya + r.biaya_usd }), { panggilan: 0, masuk: 0, keluar: 0, biaya: 0 });
+  const isi = baris.map(r => `<tr><td>${e(r.hari)}</td><td>${e(r.model)}</td><td>${angka(r.panggilan)}</td>
+    <td>${angka(r.token_masuk)}</td><td>${angka(r.token_cache_baca)}</td><td>${angka(r.token_cache_tulis)}</td><td>${angka(r.token_keluar)}</td><td>${dolar(r.biaya_usd)}</td></tr>`).join('');
+  return tata({ judul: 'Pemakaian', akun, csrf, isi: `
+<h1>Pemakaian 30 hari terakhir</h1>
+<p class="pudar">Setiap panggilan model dicatat: token masuk (biasa, dibaca dari cache, ditulis ke cache), token keluar, dan perkiraan biaya menurut harga resmi penyedia.</p>
+<div class="kartu"><strong>${angka(total.panggilan)}</strong> panggilan · <strong>${angka(total.masuk)}</strong> token masuk · <strong>${angka(total.keluar)}</strong> token keluar · perkiraan biaya <strong>${dolar(total.biaya)}</strong></div>
+<div class="kartu gulir"><table><thead><tr><th>Tanggal</th><th>Model</th><th>Panggilan</th><th>Token masuk</th><th>Dari cache</th><th>Tulis cache</th><th>Token keluar</th><th>Biaya</th></tr></thead>
+<tbody>${isi || '<tr><td colspan="8">Belum ada pemakaian.</td></tr>'}</tbody></table></div>` });
+}
+
 const halamanGalat = ({ judul, teks, akun = null, csrf = '' }) => tata({ judul, akun, csrf, isi: `<div class="kartu sempit"><h1>${e(judul)}</h1><p>${e(teks)}</p><p><a href="/">Kembali ke beranda</a></p></div>` });
 
 // Hash gaya untuk Content-Security-Policy (style-src) tanpa 'unsafe-inline'.
@@ -290,5 +367,5 @@ const HASH_GAYA = `'sha256-${require('crypto').createHash('sha256').update(GAYA)
 module.exports = {
   e, tata, HASH_GAYA, kolom, KOLOM_PROFIL,
   halamanDaftar, halamanMasuk, halamanKode2fa, halamanStatus, halamanMulai, halamanProfil,
-  halamanAdminPengguna, halamanAdmin2fa, halamanAudit, halamanGalat, halamanGoogle,
+  halamanAdminPengguna, halamanAdmin2fa, halamanAudit, halamanGalat, halamanGoogle, halamanChat, renderEntri, renderPersetujuan, halamanPemakaian,
 };

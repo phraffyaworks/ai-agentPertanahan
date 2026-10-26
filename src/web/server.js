@@ -11,7 +11,7 @@ const BATAS_GAGAL = 5, KUNCI_MS = 15 * 60e3;
 const UMUR_PRA2FA = 5 * 60e3;
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle }) {
+function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle, buatLayanan = null }) {
   const aman = konfigurasi.cookieAman;
   const NAMA_SESI = aman ? '__Host-sid' : 'sid';
   const opsiCookie = (umurMs) => ({ path: '/', httpOnly: true, sameSite: 'lax', secure: aman, ...(umurMs ? { maxAge: Math.floor(umurMs / 1000) } : {}) });
@@ -19,12 +19,15 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle }) {
   const pra2fa = new Map();      // token -> { pengguna_id, kedaluwarsa, percobaan }
   const siapkan2fa = new Map();  // id_hash sesi -> rahasia TOTP sementara
   const google = buatLayananGoogle({ db, kunci, ...(buatKlienGoogle ? { buatKlien: buatKlienGoogle } : {}) });
+  // Layanan agen dibuat oleh pemanggil (butuh layanan Google ini); tanpa agen, menu Chat menampilkan pemberitahuan.
+  const agenWeb = buatLayanan ? buatLayanan({ google }) : null;
   const templateUrl = konfigurasi.templateGoogleId ? `https://docs.google.com/spreadsheets/d/${konfigurasi.templateGoogleId}/copy` : null;
 
   const app = Fastify({ logger: log, trustProxy: konfigurasi.percayaProksi, bodyLimit: 1024 * 1024 });
   app.register(require('@fastify/cookie'));
   app.register(require('@fastify/formbody'));
   app.register(require('@fastify/rate-limit'), { global: false });
+  app.register(require('@fastify/multipart'), { limits: { fileSize: 20 * 1024 * 1024, files: 5, fields: 5, fieldSize: 200 * 1024 } });
 
   // Header keamanan untuk setiap respons.
   app.addHook('onSend', async (req, reply, payload) => {
@@ -191,7 +194,7 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle }) {
       { judul: 'Hubungkan Google Drive dan Spreadsheet', keterangan: 'Supaya agen bisa menyimpan berkas dan mencatat Master Data di akun Google Anda sendiri.', selesai: !!db.google.ambil(id), tautan: '/google', tombol: 'Hubungkan Google' },
       { judul: 'Hubungkan Telegram', keterangan: 'Supaya Anda juga bisa memakai agen lewat Telegram.', selesai: false, segera: true },
       { judul: 'Pilih model AI', keterangan: 'Sementara memakai Claude Sonnet 5.5. Pilihan model lain menyusul.', selesai: true },
-      { judul: 'Uji coba', keterangan: 'Kirim PDF contoh untuk memastikan semuanya tersambung.', selesai: false, segera: true },
+      { judul: 'Uji coba', keterangan: 'Buka Chat, sapa agen atau kirim satu PDF pengaduan, lalu tekan Tolak pada tombol persetujuan bila hanya mencoba.', selesai: db.pemakaian.jumlah(id) > 0, tautan: '/chat', tombol: 'Buka Chat' },
     ];
     return kirim(reply, H.halamanMulai({ akun: req.akun, csrf: req.akun.csrf, langkah }));
   });
@@ -247,8 +250,87 @@ function buatAplikasi({ db, konfigurasi, log = false, buatKlienGoogle }) {
     const r = await google.terimaPasangan(req.body || {});
     return reply.code(r.status).send(r.isi);
   });
-  app.get('/aset/tunggu-google.js', async (req, reply) => reply.type('application/javascript; charset=utf-8').header('Cache-Control', 'public, max-age=3600').send(
-    "(function(){var t=setInterval(function(){fetch('/google/status',{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(j){if(j.tersambung){clearInterval(t);location.reload()}}).catch(function(){})},4000)})();"));
+  const ASET = Object.fromEntries(['chat.js', 'tunggu-google.js'].map(n => [n, require('fs').readFileSync(require('path').join(__dirname, 'aset', n), 'utf8')]));
+  app.get('/aset/:nama', async (req, reply) => {
+    const isi = ASET[req.params.nama];
+    if (!isi) return reply.callNotFound();
+    return reply.type('application/javascript; charset=utf-8').header('Cache-Control', 'no-cache').send(isi);
+  });
+
+
+  // ---------- chat ----------
+  const perluAgen = async (req, reply) => {
+    await perluAktif(req, reply);
+    if (reply.sent) return reply;
+    if (!agenWeb) return kirim(reply, H.halamanGalat({ judul: 'Agen belum siap', teks: 'Pengelola belum memasang kunci Claude API untuk dashboard. Coba lagi nanti.', akun: req.akun, csrf: req.akun.csrf }), 503);
+  };
+  // Satu kejadian transkrip menjadi potongan HTML untuk peramban.
+  const keTampil = (id, x) => (x.jenis === 'keputusan'
+    ? { jenis: 'ganti', id: x.id, target: `s${x.untuk}`, html: H.renderPersetujuan(agenWeb.cariEntri(id, x.untuk) || { id: x.untuk, ringkasan: '' }, { keputusan: x }) }
+    : { jenis: 'tambah', id: x.id, html: H.renderEntri(x, { menunggu: x.jenis === 'persetujuan' && agenWeb.masihMenunggu(id, x.id) }) });
+
+  app.get('/chat', { preHandler: perluAgen }, async (req, reply) => {
+    const t = agenWeb.tampilan(req.akun.pengguna_id);
+    return kirim(reply, H.halamanChat({ akun: req.akun, csrf: req.akun.csrf, ...t }));
+  });
+  app.get('/chat/aliran', { preHandler: perluAgen }, async (req, reply) => {
+    const id = req.akun.pengguna_id;
+    reply.hijack();
+    const res = reply.raw;
+    res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', Connection: 'keep-alive', 'X-Accel-Buffering': 'no', 'X-Content-Type-Options': 'nosniff' });
+    // Header dan baris pertama dikirim segera; tanpa ini peramban baru tersambung saat ada data pertama.
+    res.write('retry: 3000\n: tersambung\n\n');
+    const kirimSse = obj => res.write(`data: ${JSON.stringify(obj)}
+
+`);
+    for (const x of agenWeb.entriSejak(id, req.query.sejak)) kirimSse(keTampil(id, x));
+    const lepas = agenWeb.berlangganan(id, p => kirimSse(p.jenis === 'status' ? p : keTampil(id, p.entri)));
+    const detak = setInterval(() => res.write(': detak\n\n'), 25000);
+    res.on('close', () => { clearInterval(detak); lepas(); });
+  });
+  app.post('/chat/pesan', { preHandler: perluAgen }, async (req, reply) => {
+    let teks = '';
+    const berkas = [];
+    try {
+      for await (const part of req.parts()) {
+        if (part.type === 'file') {
+          const buffer = await part.toBuffer();
+          if (buffer.length) berkas.push({ buffer, nama: part.filename || 'berkas', mime: part.mimetype || 'application/octet-stream' });
+        } else if (part.fieldname === 'teks') {
+          teks = String(part.value || '');
+        }
+      }
+    } catch (err) {
+      if (err.code === 'FST_REQ_FILE_TOO_LARGE') return reply.code(413).send({ ok: false, pesan: 'Berkas lebih dari 20 MB. Kecilkan ukurannya, lalu kirim lagi.' });
+      if (err.code === 'FST_FILES_LIMIT') return reply.code(413).send({ ok: false, pesan: 'Paling banyak 5 berkas sekali kirim.' });
+      throw err;
+    }
+    if (!teks.trim() && !berkas.length) return reply.code(400).send({ ok: false, pesan: 'Pesan kosong.' });
+    await agenWeb.kirimPesan(req.akun.pengguna_id, { teks, berkas, saluran: 'web' });
+    return { ok: true };
+  });
+  app.post('/chat/setuju/:id', { preHandler: perluAgen }, async req =>
+    ({ ok: agenWeb.putuskan(req.akun.pengguna_id, req.params.id, req.body?.setuju === true) }));
+  app.post('/chat/baru', { preHandler: perluAgen }, async (req, reply) => {
+    if (!agenWeb.percakapanBaru(req.akun.pengguna_id)) {
+      return kirim(reply, H.halamanGalat({ judul: 'Agen sedang bekerja', teks: 'Tunggu sampai agen selesai, lalu tekan Percakapan baru lagi.', akun: req.akun, csrf: req.akun.csrf }), 409);
+    }
+    catat(req, 'percakapan_baru');
+    return reply.redirect('/chat', 303);
+  });
+  app.get('/unduh/:id', { preHandler: perluAgen }, async (req, reply) => {
+    const id = req.akun.pengguna_id;
+    const file = agenWeb.fileKeluaran(id, req.params.id);
+    if (!file) return reply.callNotFound();
+    const nama = agenWeb.namaKeluaran(id, req.params.id) || `${req.params.id}.docx`;
+    return reply.type('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+      .header('Content-Disposition', `attachment; filename="dokumen.docx"; filename*=UTF-8''${encodeURIComponent(nama)}`)
+      .send(require('fs').createReadStream(file));
+  });
+
+  // ---------- pemakaian ----------
+  app.get('/pemakaian', { preHandler: perluAktif }, async (req, reply) =>
+    kirim(reply, H.halamanPemakaian({ akun: req.akun, csrf: req.akun.csrf, baris: db.pemakaian.perHari(req.akun.pengguna_id, Date.now() - 30 * 24 * 3600e3) })));
 
   // ---------- super admin ----------
   app.get('/admin', { preHandler: perluAdmin }, async (req, reply) => reply.redirect('/admin/pengguna'));

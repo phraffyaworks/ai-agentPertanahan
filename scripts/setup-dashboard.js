@@ -22,6 +22,32 @@ function tanya(teks, bawaan = '') {
   return ambil.then(j => j.trim() || bawaan);
 }
 
+// Pertanyaan rahasia: ketikan tidak ditampilkan di layar.
+let senyap = false;
+const tulisAsli = rl._writeToOutput.bind(rl);
+rl._writeToOutput = t => { if (!senyap || t === rl.getPrompt()) tulisAsli(t); };
+async function tanyaRahasia(teks, ada) {
+  senyap = true;
+  const j = await tanya(ada ? `${teks} (Enter = pakai yang tersimpan)` : teks);
+  senyap = false;
+  process.stdout.write('\n');
+  return j;
+}
+
+// Menguji kunci Claude dengan meminta daftar model (gratis, tidak memakai token).
+async function ujiKunciClaude(kunci) {
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/models?limit=1', {
+      headers: { 'x-api-key': kunci, 'anthropic-version': '2023-06-01' }, signal: AbortSignal.timeout(15000),
+    });
+    if (r.status === 200) return { ok: true };
+    if (r.status === 401 || r.status === 403) return { ok: false, pesan: 'Kunci ditolak Anthropic. Periksa lagi, atau buat kunci baru di Claude Console.' };
+    return { ok: false, pesan: `Anthropic menjawab HTTP ${r.status}.` };
+  } catch (err) {
+    return { ok: null, pesan: `Tidak bisa menghubungi Anthropic (${err.message}).` };
+  }
+}
+
 async function ipPublik() {
   try {
     const res = await fetch('https://api.ipify.org', { signal: AbortSignal.timeout(8000) });
@@ -56,6 +82,21 @@ async function main() {
   }
   console.log('\nID template Google: lihat docs/TEMPLATE-GOOGLE.md. Boleh dikosongkan dulu dan diisi nanti dengan menjalankan pemasangan lagi.');
   const template = await tanya('ID template Google', lama.GOOGLE_TEMPLATE_ID || '');
+
+  console.log('\nKunci Claude API untuk dashboard (dari Claude Console → API keys). Disarankan kunci baru khusus dashboard,');
+  console.log('terpisah dari kunci bot versi 1, supaya biayanya terlihat terpisah. Ketikan tidak tampil di layar.');
+  let kunciClaude = lama.ANTHROPIC_API_KEY || '';
+  for (;;) {
+    const j = await tanyaRahasia('Kunci Claude API', !!kunciClaude);
+    if (j) kunciClaude = j;
+    if (!kunciClaude) { console.log('Boleh dikosongkan dulu; menu Chat belum bisa dipakai sampai kunci diisi.'); break; }
+    if (!/^sk-ant-/.test(kunciClaude)) { console.log('Kunci Claude diawali "sk-ant-". Coba lagi.'); kunciClaude = lama.ANTHROPIC_API_KEY || ''; continue; }
+    const u = await ujiKunciClaude(kunciClaude);
+    if (u.ok) { console.log('Kunci Claude diterima.'); break; }
+    console.log(u.pesan);
+    if (u.ok === null && (await tanya('Ketik "lanjut" untuk tetap menyimpan, atau Enter untuk mencoba lagi', '')).toLowerCase() === 'lanjut') break;
+    kunciClaude = lama.ANTHROPIC_API_KEY || '';
+  }
   rl.close();
 
   const nilai = {
@@ -65,6 +106,7 @@ async function main() {
     WEB_PORT: lama.WEB_PORT || '3000',
     APP_MASTER_KEY: lama.APP_MASTER_KEY || crypto.randomBytes(32).toString('base64'),
     GOOGLE_TEMPLATE_ID: template,
+    ANTHROPIC_API_KEY: kunciClaude,
   };
   const isi = ['# Dibuat oleh scripts/setup-dashboard.js. Jangan bagikan isi file ini.',
     ...Object.entries(nilai).map(([k, v]) => `${k}=${/[\s#"']/.test(v) ? JSON.stringify(v) : v}`)].join('\n') + '\n';

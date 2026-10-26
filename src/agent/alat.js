@@ -4,7 +4,7 @@ const { z } = require('zod');
 const { HEADER } = require('../google/sheets');
 const { FIELDS, catatPengaduan, rencanaNama } = require('../pipeline/intake');
 const { uniqueName, sanitizeName, PERLU_CEK } = require('../util/naming');
-const { buildTelaahan } = require('../docs/telaahan');
+const { buildTelaahan, formatNip } = require('../docs/telaahan');
 const { buildNotula } = require('../docs/notula');
 const { buildNotaDinas, buildSuratKeluar, TTD_SURAT_KELUAR } = require('../docs/surat');
 
@@ -115,7 +115,7 @@ const TUJUAN_SINGKAT = str('Singkatan tujuan surat untuk nama file, mis. "Kantah
 // Ringkasan persetujuan untuk Nota Dinas dan Surat Keluar.
 async function ringkasSurat(ctx, i, jenis) {
   const f = await namaFolder(ctx, i.folder_id);
-  const d = i.data, p = d.penandatangan || TTD_SURAT_KELUAR;
+  const d = i.data, p = d.penandatangan || (jenis === 'Surat Keluar' ? ttdSuratKeluar(ctx) : {});
   return [`Membuat ${jenis} (.docx):`, `• Disimpan di folder "${f.name}" sebagai ${jenis}_${sanitizeName(i.tujuan_singkat)}_${f.name}.docx`,
     '• Dikirim juga ke chat ini', `• Yth.: ${d.kepada}`, `• Hal: ${d.hal}`,
     `• Penanda tangan: ${[p.atas_nama, p.jabatan, p.nama].filter(Boolean).join(' / ')}`,
@@ -132,6 +132,14 @@ const Email = z.object({ kepada: z.string().min(3), cc: z.string().optional(), s
 const keEmail = e => ({ to: e.kepada, cc: e.cc || undefined, subject: e.subjek, body: e.isi, attachmentIds: e.lampiran_drive_ids });
 const ringkasEmail = (judul, e) => [judul, `Kepada: ${e.kepada}`, e.cc ? `Cc: ${e.cc}` : null, `Subjek: ${e.subjek}`,
   e.lampiran_drive_ids?.length ? `Lampiran: ${e.lampiran_drive_ids.length} file Drive` : null, '', potong(e.isi, 1500)].filter(v => v !== null).join('\n');
+
+// Dashboard versi 2: data penanda tangan diambil dari profil pengguna (ctx.profil, bentuk src/web/profil.js keDokumen).
+// Bot versi 1 tidak mengisi ctx.profil, sehingga nilai bawaan di src/docs tetap dipakai.
+function profilDokumen(ctx) {
+  if (ctx.wajibProfil && !ctx.profil) throw new Error('Profil penanda tangan belum diisi. Minta pengguna membuka menu Profil di dashboard, lalu coba lagi.');
+  return ctx.profil || null;
+}
+const ttdSuratKeluar = ctx => (ctx.profil && ctx.profil.ttdSuratKeluar) || TTD_SURAT_KELUAR;
 
 async function namaFolder(ctx, folderId) {
   const f = await ctx.google.drive.getFolder(folderId);
@@ -252,10 +260,12 @@ const ALAT = [
     zod: z.object({ folder_id: z.string(), data: Telaahan }),
     ringkasan: async (ctx, i) => {
       const f = await namaFolder(ctx, i.folder_id);
-      return `Membuat Telaahan Staf (.docx):\n• Disimpan di folder "${f.name}" sebagai Telaahan Staff_${f.name}.docx\n• Dikirim juga ke chat ini\n• Kesimpulan: ${i.data.kesimpulan.kasus ? 'Kasus' : 'Bukan Kasus'}`;
+      const pr = profilDokumen(ctx);
+      return `Membuat Telaahan Staf (.docx):\n• Disimpan di folder "${f.name}" sebagai Telaahan Staff_${f.name}.docx\n• Dikirim juga ke chat ini\n• Kesimpulan: ${i.data.kesimpulan.kasus ? 'Kasus' : 'Bukan Kasus'}${pr ? `\n• Pengolah: ${pr.pengolah.nama}; Mengetahui: ${pr.kasubdit.nama}` : ''}`;
     },
     async run(ctx, i) {
-      const buf = await buildTelaahan(i.data);
+      const pr = profilDokumen(ctx);
+      const buf = await buildTelaahan(pr ? { ...i.data, pengolah: pr.pengolah, kasubdit: pr.kasubdit, kota: pr.kota } : i.data);
       return json(await simpanDocx(ctx, i.folder_id, 'Telaahan Staff', buf, 'Telaahan Staf'));
     },
   },
@@ -271,7 +281,8 @@ const ALAT = [
       return `Membuat Notula Gelar Kasus Awal (.docx):\n• Disimpan di folder "${f.name}" sebagai Notula Gelar Kasus Awal_${f.name}.docx\n• Dikirim juga ke chat ini${kosong.length ? `\n• Akan bertanda ${PERLU_CEK}: ${kosong.join(', ')}` : ''}`;
     },
     async run(ctx, i) {
-      const buf = await buildNotula(i.data);
+      const pr = profilDokumen(ctx);
+      const buf = await buildNotula(pr ? { ...i.data, notulis: { nama: pr.pengolah.nama, nip: formatNip(pr.pengolah.nip) } } : i.data);
       return json(await simpanDocx(ctx, i.folder_id, 'Notula Gelar Kasus Awal', buf, 'Notula Gelar Kasus Awal'));
     },
   },
@@ -296,7 +307,8 @@ const ALAT = [
     zod: z.object({ folder_id: z.string(), tujuan_singkat: wajib, data: SuratKeluar }),
     ringkasan: (ctx, i) => ringkasSurat(ctx, i, 'Surat Keluar'),
     async run(ctx, i) {
-      const buf = await buildSuratKeluar(i.data);
+      if (ctx.wajibProfil) profilDokumen(ctx);
+      const buf = await buildSuratKeluar(i.data.penandatangan ? i.data : { ...i.data, penandatangan: ttdSuratKeluar(ctx) });
       return json(await simpanDocx(ctx, i.folder_id, `Surat Keluar_${sanitizeName(i.tujuan_singkat)}`, buf, 'Surat Keluar'));
     },
   },

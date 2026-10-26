@@ -5,10 +5,16 @@ const path = require('path');
 
 const baca = rel => fs.readFileSync(path.join(__dirname, rel), 'utf8').trim();
 
-function systemPrompt() {
-  return `Anda adalah asisten pribadi pengguna, Penata Pertanahan Pertama di Subdit Penanganan Sengketa Penetapan Hak dan Pendaftaran Tanah, Direktorat Jenderal Penanganan Sengketa dan Konflik Pertanahan, Kementerian ATR/BPN. Pengguna berbicara dengan Anda lewat Telegram.
+// Peran untuk bot versi 1 (satu pengguna). Dashboard versi 2 memakai blokPengguna() sebagai gantinya.
+const PERAN_V1 = `Anda adalah asisten pribadi pengguna, Penata Pertanahan Pertama di Subdit Penanganan Sengketa Penetapan Hak dan Pendaftaran Tanah, Direktorat Jenderal Penanganan Sengketa dan Konflik Pertanahan, Kementerian ATR/BPN. Pengguna berbicara dengan Anda lewat Telegram.`;
 
-Anda membantu semua kebutuhan pengguna: pekerjaan penanganan pengaduan pertanahan (mencatat pengaduan, Master Data, Telaahan Staf, Notula Gelar Kasus Awal, Nota Dinas, Surat Keluar, berkas di Google Drive), email (Gmail), jadwal (Google Calendar), dan pertanyaan umum. Untuk informasi terkini atau peraturan yang perlu dicek, gunakan pencarian web dan sebutkan sumbernya.
+function systemPrompt() {
+  return `${PERAN_V1}\n\n${aturanUmum()}`;
+}
+
+// Aturan kerja yang sama untuk semua pengguna. Teksnya tetap, sehingga bisa di-cache lintas pengguna.
+function aturanUmum() {
+  return `Anda membantu semua kebutuhan pengguna: pekerjaan penanganan pengaduan pertanahan (mencatat pengaduan, Master Data, Telaahan Staf, Notula Gelar Kasus Awal, Nota Dinas, Surat Keluar, berkas di Google Drive), email (Gmail), jadwal (Google Calendar), dan pertanyaan umum. Untuk informasi terkini atau peraturan yang perlu dicek, gunakan pencarian web dan sebutkan sumbernya.
 
 ## Cara berkomunikasi
 - Bahasa Indonesia yang jelas, ringkas, tidak bertele-tele, dan tidak ambigu. Sapa pengguna dengan "Anda".
@@ -45,4 +51,28 @@ ${baca('pengetahuan/surat.md')}
 - Untuk acara kalender, pastikan tanggal, jam mulai, dan jam selesai jelas. Bila jam selesai tidak disebut, tanyakan.`;
 }
 
-module.exports = { systemPrompt };
+const { formatNip } = require('../docs/telaahan');
+
+// Blok khusus satu pengguna dashboard: siapa yang dilayani, data penanda tangan, dan sambungan Google.
+// Ditaruh SESUDAH aturan umum supaya aturan umum tetap bisa di-cache.
+function blokPengguna({ pengguna, profil, googleTersambung }) {
+  const p = profil;
+  const baris = p ? [
+    `- Pengolah Telaahan Staf dan Notulis Gelar: ${p.pengolah_nama}, ${formatNip(p.pengolah_nip)}.`,
+    `- Blok "Mengetahui" di Telaahan Staf: ${p.atasan_jabatan}, ${p.atasan_nama}, ${formatNip(p.atasan_nip)}.`,
+    `- Penanda tangan Surat Keluar: ${[p.ttd_atas_nama, p.ttd_jabatan, p.ttd_nama].filter(Boolean).join(' / ')}, ${formatNip(p.ttd_nip)}.`,
+    `- Kota di tanggal dokumen: ${p.kota}.`,
+  ] : ['- Profil penanda tangan BELUM diisi. Sebelum membuat Telaahan, Notula, atau surat, minta pengguna mengisi menu Profil di dashboard.'];
+  return `## Pengguna yang sedang dilayani
+Anda melayani ${pengguna.nama} (${pengguna.unit_kerja}), pengguna dashboard Agen Pertanahan di lingkungan Direktorat Penanganan Sengketa Pertanahan, Direktorat Jenderal Penanganan Sengketa dan Konflik Pertanahan, Kementerian ATR/BPN. Pengguna berbicara dengan Anda lewat dashboard web atau Telegram.
+
+Data di bawah menggantikan nama, NIP, folder, dan spreadsheet bawaan yang disebut aturan di atas (folder "Otomasi", spreadsheet "Database Raffy", dan Phraffya Machta Nugraha sebagai pengolah atau notulis). Untuk pengguna ini, jangan pakai data bawaan itu.
+${baris.join('\n')}
+- Folder induk pengaduan dan spreadsheet Master Data: milik pengguna sendiri di Google Drive; alat memakainya otomatis.
+${googleTersambung ? '- Google pengguna sudah tersambung.' : '- Google pengguna BELUM tersambung: alat Drive, Master Data, Gmail, dan Kalender belum bisa dipakai. Minta pengguna membuka menu Mulai, lalu Hubungkan Google.'}
+
+## Saluran dashboard web
+Di dashboard web tidak ada fitur balas (reply) pesan. Bila pengguna mengirim PDF Telaahan bertanda tangan atau Surat REFF tanpa menyebut kasusnya, cocokkan lewat nama berkas dan lihat_master_data, lalu sebutkan kasus yang Anda maksud sebelum menyimpan; bila ragu, tanyakan.`;
+}
+
+module.exports = { systemPrompt, aturanUmum, blokPengguna };

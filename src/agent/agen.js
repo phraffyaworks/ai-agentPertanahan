@@ -21,12 +21,15 @@ const INSTRUKSI_RINGKASAN = 'Ringkasan wajib memuat: kasus yang dibahas (nama fo
 const WIB = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'full', timeStyle: 'short' });
 const capWaktu = (now = new Date()) => `[${WIB.format(now)} WIB]`;
 
-function createAgen({ claude, riwayat }) {
+// system: daftar blok prompt sistem bawaan (bot versi 1). Dashboard mengirim system dan riwayat per pengguna
+// lewat argumen opsi di giliran().
+function createAgen({ claude, riwayat, system = [{ type: 'text', text: systemPrompt() }] }) {
   const client = new Anthropic({ apiKey: claude.apiKey });
-  const system = [{ type: 'text', text: systemPrompt() }];
   const aktif = Object.fromEntries(Object.keys(FITUR).map(k => [k, true]));
 
-  const params = messages => ({
+  // Penanda cache per blok sistem dibuang bila fitur cache ditolak API.
+  const sistemUntuk = blok => (aktif.cache ? blok : blok.map(({ cache_control: _, ...b }) => b));
+  const params = (messages, sys = system) => ({
     model: claude.model,
     max_tokens: 32000,
     betas: Object.keys(FITUR).filter(k => aktif[k] && FITUR[k].beta).map(k => FITUR[k].beta),
@@ -35,15 +38,15 @@ function createAgen({ claude, riwayat }) {
     output_config: { effort: claude.effort || 'medium' },
     ...(aktif.ringkasan && { context_management: { edits: [{ type: 'compact_20260112', instructions: INSTRUKSI_RINGKASAN }] } }),
     ...(aktif.cache && { cache_control: { type: 'ephemeral' } }),
-    system,
+    system: sistemUntuk(sys),
     tools: toolDefinitions().map(t => (aktif.alirMasukan || !('eager_input_streaming' in t) ? t : (({ eager_input_streaming: _, ...x }) => x)(t))),
     messages,
   });
 
-  async function panggil(messages) {
+  async function panggil(messages, sys) {
     for (;;) {
       try {
-        return await client.beta.messages.stream(params(messages)).finalMessage();
+        return await client.beta.messages.stream(params(messages, sys)).finalMessage();
       } catch (err) {
         if (err instanceof Anthropic.BadRequestError) {
           const fitur = Object.keys(FITUR).find(k => aktif[k] && FITUR[k].pola.test(err.message));
@@ -61,15 +64,21 @@ function createAgen({ claude, riwayat }) {
     }
   }
 
-  // io: { kirimTeks(teks), kirimDokumen(buffer, nama, caption), mintaPersetujuan(ringkasan) }
+  // io: { kirimTeks(teks), kirimDokumen(buffer, nama, caption), mintaPersetujuan(ringkasan), catatPemakaian?(p) }
   // ctx: layanan untuk alat (google, berkas, store, folderIndukId, ...)
-  async function giliran(chatId, isiPengguna, io, ctx) {
-    const h = riwayat.load(chatId);
+  // opsi (dashboard): { system, riwayat } milik pengguna yang sedang dilayani.
+  async function giliran(chatId, isiPengguna, io, ctx, opsi = {}) {
+    const sys = opsi.system || system;
+    const h = (opsi.riwayat || riwayat).load(chatId);
     h.push({ role: 'user', content: [{ type: 'text', text: capWaktu() }, ...isiPengguna] });
     const alatCtx = { ...ctx, kirimDokumen: io.kirimDokumen, mintaPersetujuan: io.mintaPersetujuan };
 
     for (let putaran = 0; putaran < MAKS_PUTARAN; putaran++) {
-      const msg = await panggil(h.messages);
+      const mulai = Date.now();
+      const msg = await panggil(h.messages, sys);
+      if (io.catatPemakaian) {
+        try { io.catatPemakaian({ model: msg.model || claude.model, usage: msg.usage || {}, durasi_ms: Date.now() - mulai }); } catch (err) { console.error('Gagal mencatat pemakaian:', err); }
+      }
       h.push({ role: 'assistant', content: msg.content });
 
       const teks = msg.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();

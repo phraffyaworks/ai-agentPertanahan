@@ -22,6 +22,10 @@ function muatKonfigurasiWeb() {
     kunciUtama: kunciUtama(ambil('APP_MASTER_KEY', '')),
     // ID spreadsheet template (berisi skrip apps-script/template) yang dibagikan "siapa saja yang memiliki link".
     templateGoogleId: ambil('GOOGLE_TEMPLATE_ID', ''),
+    // Agen: kunci Claude milik layanan (dipakai pengguna dengan saldo layanan), model, dan tingkat berpikir.
+    claude: { apiKey: ambil('ANTHROPIC_API_KEY', ''), model: ambil('CLAUDE_MODEL', 'claude-sonnet-5-5'), effort: ambil('CLAUDE_EFFORT', 'medium') },
+    // Riwayat, berkas, dan dokumen hasil per pengguna: <dataDir>/pengguna/<id>/
+    dataDir: ambil('WEB_DATA_DIR', path.join(__dirname, '..', '..', 'data')),
   };
 }
 

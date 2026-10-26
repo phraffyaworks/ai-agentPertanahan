@@ -190,6 +190,7 @@ function createDb(file) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(r.pengguna_id, r.waktu ?? now(), r.saluran, r.penyedia, r.model,
       r.token_masuk || 0, r.token_keluar || 0, r.token_cache_baca || 0, r.token_cache_tulis || 0, r.pencarian_web || 0,
       r.biaya_usd || 0, r.durasi_ms ?? null, r.berhasil === false ? 0 : 1),
+    jumlah: pengguna_id => q('SELECT COUNT(*) AS n FROM pemakaian WHERE pengguna_id = ?').get(pengguna_id).n,
     // Ringkasan per hari untuk satu pengguna (atau semua bila pengguna_id null), sejak waktu tertentu.
     perHari: (pengguna_id, sejak) => q(`SELECT date(waktu / 1000, 'unixepoch', '+7 hours') AS hari, model,
         SUM(token_masuk) AS token_masuk, SUM(token_keluar) AS token_keluar,
