@@ -31,6 +31,7 @@ Catatan jawaban pengguna yang menjadi aturan tetap agen. Bila skill lama (telaah
 ## Format Telaahan Staf
 - Tata letak mengikuti skill analis-pertanahan: Bookman Old Style 11 pt, spasi 1,5, A4, margin kiri-kanan 1,9 cm, atas-bawah 2,54 cm, ruang kop 5,3 cm di halaman 1.
 - Nama dan NIP penanda tangan: `Phraffya Machta Nugraha, S.Kom.` dan `NIP. 19910404 202321 1 026` (bergelar dengan titik, awalan `NIP.`, NIP berspasi). Berlaku juga untuk Kasubdit.
+- Kasubdit (blok "Mengetahui"): `Sofyan Hadi Syam, S.H., M.Kn.`, `NIP. 19810603 200502 1 001` (sejak November 2026, menggantikan Yanti Cahyati Saca Prawira).
 - Tanggal memakai tanggal otomatis Word (ikut berubah saat file dibuka).
 - Setelah bab Para Pihak, para pihak boleh disebut "Pengadu"/"Teradu" dan/atau dengan namanya.
 - Uraian Kasus: Butir 1 perolehan hak Pengadu, Butir 2 asal-usul hak, butir selanjutnya kronologis ketat.

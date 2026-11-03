@@ -11,7 +11,7 @@ const DEF = {
   pengolah: { nama: 'Phraffya Machta Nugraha, S.Kom.', nip: '19910404 202321 1 026' },
   kasubdit: {
     jabatan: 'Kepala Sub Direktorat Penanganan Sengketa Penetapan Hak dan Pendaftaran Tanah',
-    nama: 'Yanti Cahyati Saca Prawira, S.P.,S.H.,M.H.', nip: '19780314 200212 2 003',
+    nama: 'Sofyan Hadi Syam, S.H., M.Kn.', nip: '19810603 200502 1 001',
   },
   kota: 'Jakarta',
 };

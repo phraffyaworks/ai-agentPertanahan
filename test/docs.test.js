@@ -13,7 +13,7 @@ test('Telaahan: docx terbentuk dengan format penanda tangan yang disepakati', as
   const xml = buf.toString('latin1');
   assert.ok(buf.length > 10000);
   assert.ok(!xml.includes('S.Kom<'), 'gelar tanpa titik tidak boleh muncul');
-  assert.strictEqual(formatNip('197803142002122003'), 'NIP. 19780314 200212 2 003');
+  assert.strictEqual(formatNip('198106032005021001'), 'NIP. 19810603 200502 1 001');
   assert.strictEqual(formatNip('NIP. 19910404 202321 1 026'), 'NIP. 19910404 202321 1 026');
 });
 
@@ -108,4 +108,11 @@ test('Surat Keluar: tembusan selalu diawali Direktur Jenderal, tidak dobel, tand
   ]);
   const xml = await docXml(await buildSuratKeluar({ ...contohSuratKeluar, tembusan: ['Kepala Kantor Wilayah Badan Pertanahan Nasional Provinsi Jawa Barat'] }));
   assert.ok(xml.indexOf('Direktur Jenderal Penanganan Sengketa dan Konflik Pertanahan;') < xml.indexOf('Provinsi Jawa Barat.'));
+});
+
+test('Telaahan: blok Mengetahui memakai Kasubdit yang berlaku', async () => {
+  const xml = await docXml(await buildTelaahan(contohTelaahan));
+  assert.ok(xml.includes('Sofyan Hadi Syam, S.H., M.Kn.'));
+  assert.ok(xml.includes('NIP. 19810603 200502 1 001'));
+  assert.ok(!xml.includes('Yanti'));
 });
