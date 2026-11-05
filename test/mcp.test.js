@@ -276,6 +276,7 @@ test('berkas Hermes (SOUL.md dan skill) sesuai aturan bot terbaru', () => {
   assert.deepStrictEqual(Object.keys(berkas).sort(), ['SOUL.md', 'SOUL-tambahan.md', ...['pengaduan', 'notula', 'surat', 'telaahan'].map(n => path.join('skills', `pertanahan-${n}`, 'SKILL.md'))].sort());
   assert.match(berkas['SOUL-tambahan.md'], /baca_berkas/);
   assert.match(berkas['SOUL-tambahan.md'], /MEDIA:<lokasi>/);
+  for (const f of ['SOUL.md', 'SOUL-tambahan.md']) assert.match(berkas[f], /Jangan mencari nama atau identitas para pihak/, f);
   const soul = berkas['SOUL.md'];
   assert.doesNotMatch(soul, /\[Berkas B<n>/);
   assert.match(soul, /baca_berkas/);

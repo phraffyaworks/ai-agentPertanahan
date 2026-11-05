@@ -12,6 +12,9 @@ const ROOT = path.join(__dirname, '..');
 const KELUAR = path.join(ROOT, 'hermes');
 const baca = rel => fs.readFileSync(path.join(ROOT, rel), 'utf8').trim();
 const VERSI = require('../package.json').version;
+// Aturan khusus Hermes (persona pengguna suka berinisiatif mencari informasi): data pribadi para pihak
+// tidak dikirim ke mesin pencari.
+const PRIVASI_WEB = 'Jangan mencari nama atau identitas para pihak (pengadu, teradu, kuasa) di internet, kecuali pengguna memintanya. Pencarian web untuk peraturan dan informasi umum tetap boleh.';
 const PERINGATAN = '<!-- Dibuat otomatis oleh scripts/buat-hermes.js dari aturan bot. Jangan diubah di sini: ubah sumbernya, lalu jalankan "npm run hermes". -->';
 
 // Bagian prompt bot di antara dua judul.
@@ -52,7 +55,7 @@ function bangun() {
   const keputusan = `## Keputusan pengguna (aturan tetap; berlaku di atas aturan lain bila berbeda)\n\n${turunkan(baca('docs/KEPUTUSAN.md'))}`;
   const dokumen = '## File dokumen\nAlat buat_telaahan, buat_notula, buat_nota_dinas, dan buat_surat_keluar menyimpan file di folder pengadu di Drive. Hasil alatnya berisi baris "MEDIA:<lokasi>": salin baris itu persis ke balasan supaya file .docx terkirim ke chat.';
 
-  const soul = [PERINGATAN, pembuka, komunikasi, persetujuan, email,
+  const soul = [PERINGATAN, pembuka, `${komunikasi}\n- ${PRIVASI_WEB}`, persetujuan, email,
     '## Pekerjaan pertanahan\nUntuk pengaduan, Master Data, folder pengadu, Telaahan Staf, Notula Gelar Kasus Awal, Nota Dinas, atau Surat Keluar, muat skill pertanahan-pengaduan lebih dulu, lalu skill dokumen yang sesuai (pertanahan-telaahan, pertanahan-notula, pertanahan-surat). Semua alatnya berasal dari server MCP "pertanahan".',
     dokumen].join('\n\n');
 
@@ -83,6 +86,7 @@ function bangun() {
     '- Pakai bahasa Indonesia formal dan sapa pengguna dengan "Anda", tanpa humor, metafora, atau bahasa gaul, baik di draf, ringkasan kasus, maupun dokumen dinas. Di chat, pakai teks biasa dan daftar bernomor, tanpa tabel.',
     '- Baca berkas kiriman pengguna dengan alat baca_berkas (bukan terminal atau OCR), lalu rujuk berkas itu dengan lokasi filenya.',
     '- Jangan menebak nama, nomor, tanggal, NIP, atau isi dokumen. Tanyakan, atau tandai "[PERLU CEK]" bila aturan pekerjaannya memintanya.',
+    `- ${PRIVASI_WEB}`,
     '- Alat pertanahan yang mengubah data atau mengirim sesuatu meminta persetujuan pengguna sendiri. Jangan meminta konfirmasi teks terpisah; bila ditolak, jangan ulangi tanpa perubahan.',
     '- Bila hasil alat berisi baris "MEDIA:<lokasi>", salin baris itu persis ke balasan supaya file terkirim ke chat.'].join('\n');
 
