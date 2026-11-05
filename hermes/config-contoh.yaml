@@ -1,0 +1,29 @@
+# Potongan untuk ~/.hermes/config.yaml (lihat docs/HERMES.md, Bagian 4).
+# Gabungkan dengan isi yang sudah ada: bila kunci yang sama (mis. "skills:") sudah ada, tambahkan isinya
+# di bawah kunci itu, jangan ditulis dua kali. YAML yang ganda diam-diam menimpa yang lebih awal.
+
+mcp_servers:
+  pertanahan:
+    command: "node"
+    args: ["/opt/agen-pertanahan-mcp/src/mcp/server.js"]
+    # Persetujuan sudah diminta oleh server ini sendiri (ringkasan sama dengan bot Telegram),
+    # jadi tidak perlu prompt tambahan dari Hermes.
+    trust: full
+    # Menunggu persetujuan dan membaca PDF panjang bisa lebih dari 5 menit.
+    timeout: 900
+    elicitation:
+      enabled: true
+      timeout: 600
+
+# Skill pertanahan dibaca langsung dari folder server MCP (diperbarui lewat git pull).
+# Hermes tidak boleh mengubah skill dan ingatannya sendiri tanpa persetujuan Anda.
+skills:
+  external_dirs:
+    - /opt/agen-pertanahan-mcp/hermes/skills
+  write_approval: true
+memory:
+  write_approval: true
+
+# Perintah terminal yang berbahaya selalu ditanyakan dulu.
+approvals:
+  mode: manual

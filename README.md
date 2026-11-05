@@ -4,6 +4,8 @@ Asisten pribadi berbasis Claude untuk Penata Pertanahan Pertama (Subdit Penangan
 
 Penyiapan: [docs/PANDUAN.md](docs/PANDUAN.md), lalu [docs/APPS-SCRIPT.md](docs/APPS-SCRIPT.md) dan [docs/VPS.md](docs/VPS.md).
 
+Memakai alat dan aturan yang sama di Hermes Agent (server MCP): [docs/HERMES.md](docs/HERMES.md).
+
 ## Yang bisa dilakukan
 - **Pengaduan:** kirim PDF, lalu asisten membaca, membuat folder `Nama Pengadu - Kota/Kabupaten` di Otomasi, menyimpan PDF dengan nama yang sama, dan mencatat satu baris di Master Data.
 - **Master Data:** menjawab pertanyaan ("kasus mana yang masih Menunggu?") dan mengubah kolom (Rencana TL, Status, dan lainnya).
