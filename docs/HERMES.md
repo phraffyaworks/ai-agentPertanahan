@@ -84,7 +84,7 @@ hermes mcp test pertanahan
 cp ~/.hermes/SOUL.md ~/.hermes/SOUL.md.cadangan
 cat /opt/agen-pertanahan-mcp/hermes/SOUL-tambahan.md >> ~/.hermes/SOUL.md
 ```
-- Tambahan ini berisi lima aturan: memuat skill pertanahan, membaca berkas dengan `baca_berkas`, tidak menebak, persetujuan, dan baris MEDIA.
+- Tambahan ini berisi enam aturan: memuat skill pertanahan, bahasa formal tanpa humor atau bahasa gaul (berlaku di atas gaya persona, hanya untuk pekerjaan pertanahan), membaca berkas dengan `baca_berkas`, tidak menebak, persetujuan, dan baris MEDIA.
 - Perintah `cat ... >>` cukup dijalankan **sekali**. Bila dijalankan dua kali, tambahannya tertulis dua kali; pulihkan dengan `cp ~/.hermes/SOUL.md.cadangan ~/.hermes/SOUL.md`, lalu jalankan lagi sekali.
 
 **Bila belum punya SOUL.md sendiri**, pakai versi lengkap yang meniru gaya bot:
