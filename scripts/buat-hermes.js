@@ -1,5 +1,6 @@
 // Membangkitkan berkas untuk Hermes Agent dari aturan bot, supaya keduanya memakai aturan yang sama:
 //   hermes/SOUL.md                     cara berkomunikasi dan persetujuan (selalu dimuat Hermes)
+//   hermes/SOUL-tambahan.md            versi pendek, untuk disambung ke SOUL.md milik pengguna
 //   hermes/skills/pertanahan-*/SKILL.md alur pengaduan, Telaahan, Notula, Nota Dinas/Surat Keluar
 // Sumber: src/agent/prompt.js, docs/KEPUTUSAN.md, src/agent/pengetahuan/*.md.
 // Jalankan "npm run hermes" setiap kali sumber itu berubah; "--cek" hanya memeriksa (dipakai uji otomatis).
@@ -75,7 +76,15 @@ function bangun() {
       ['# Nota Dinas dan Surat Keluar', turunkan(baca('src/agent/pengetahuan/surat.md')), dokumen, keputusan]),
   };
 
-  const berkas = { 'SOUL.md': soul };
+  // Untuk pengguna yang sudah punya SOUL.md sendiri: cukup disambung di akhirnya.
+  const tambahan = ['## Pekerjaan pertanahan (server MCP "pertanahan")',
+    '- Untuk pengaduan, Master Data, folder pengadu, Telaahan Staf, Notula Gelar Kasus Awal, Nota Dinas, atau Surat Keluar, muat skill pertanahan-pengaduan lebih dulu, lalu skill dokumen yang sesuai (pertanahan-telaahan, pertanahan-notula, pertanahan-surat).',
+    '- Baca berkas kiriman pengguna dengan alat baca_berkas (bukan terminal atau OCR), lalu rujuk berkas itu dengan lokasi filenya.',
+    '- Jangan menebak nama, nomor, tanggal, NIP, atau isi dokumen. Tanyakan, atau tandai "[PERLU CEK]" bila aturan pekerjaannya memintanya.',
+    '- Alat pertanahan yang mengubah data atau mengirim sesuatu meminta persetujuan pengguna sendiri. Jangan meminta konfirmasi teks terpisah; bila ditolak, jangan ulangi tanpa perubahan.',
+    '- Bila hasil alat berisi baris "MEDIA:<lokasi>", salin baris itu persis ke balasan supaya file terkirim ke chat.'].join('\n');
+
+  const berkas = { 'SOUL.md': soul, 'SOUL-tambahan.md': `${PERINGATAN}\n\n${tambahan}` };
   for (const [nama, isi] of Object.entries(skills)) berkas[path.join('skills', nama, 'SKILL.md')] = isi;
   return Object.fromEntries(Object.entries(berkas).map(([k, v]) => [k, `${v.trim()}\n`]));
 }

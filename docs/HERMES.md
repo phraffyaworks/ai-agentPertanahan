@@ -15,7 +15,11 @@ Panduan ini menyambungkan alat dan aturan bot @phraffaiotomation_bot ke Hermes A
 - **Fase A (sekarang):** sambungkan ke Hermes yang sudah ada.
 - **Fase B (disarankan, setelah Fase A berjalan baik):** pindahkan Hermes dari pengguna `root` ke pengguna biasa. Panduan keamanan Hermes melarang gateway berjalan sebagai root.
 
-Semua perintah dijalankan di **Browser terminal hPanel**, sebagai root, kecuali disebut lain.
+**Di mana langkah ini dikerjakan:**
+- Semua perintah dijalankan di **Browser terminal hPanel** (hPanel → VPS → Browser terminal), sebagai root, kecuali disebut lain.
+- **Telegram hanya untuk uji coba** (langkah A8).
+- Jangan meminta Hermes menjalankan perintah ini lewat chat. Perintahnya menyentuh file rahasia dan pengaturan Hermes sendiri, dan sambungan chat terputus saat gateway dinyalakan ulang.
+- Kode sumbernya ada di GitHub (cabang `hermes-mcp`). Langkah A2 mengunduhnya ke VPS.
 - Jangan menempel isi `.env`, token, atau kunci API ke chat mana pun.
 - Bila ada perintah yang menampilkan pesan galat, berhenti dan kirim pesan galatnya.
 
@@ -42,7 +46,9 @@ Perintah ini menyalin tiga baris dari `.env` bot tanpa menampilkannya: alamat Ap
 ```
 grep -E '^(APPS_SCRIPT_URL|APPS_SCRIPT_SECRET|ANTHROPIC_API_KEY)=' /home/agen/ai-agentPertanahan/.env > /opt/agen-pertanahan-mcp/.env
 chmod 600 /opt/agen-pertanahan-mcp/.env
+grep -oE '^[A-Z_]+=' /opt/agen-pertanahan-mcp/.env
 ```
+Perintah terakhir hanya menampilkan nama pengaturannya, tanpa isinya. Harus muncul tiga baris: `APPS_SCRIPT_URL=`, `APPS_SCRIPT_SECRET=`, `ANTHROPIC_API_KEY=`.
 - **Kunci Claude** dipakai alat `baca_berkas` untuk membaca PDF pengaduan, termasuk scan, tulisan tangan, dan cap, dengan cara yang sama seperti bot. Biayanya tercatat di kunci itu. Bila ingin biayanya terpisah, buat kunci baru di Claude Console, lalu ganti baris `ANTHROPIC_API_KEY` di file ini dengan `nano`.
 - **Bila suatu hari Anda menjalankan `npm run setup` lagi di bot**, kode rahasia Apps Script ikut berganti. Ulangi langkah A3 setelahnya.
 
@@ -72,21 +78,34 @@ hermes mcp test pertanahan
   - `approvals.mode manual`: perintah terminal yang berbahaya selalu ditanyakan dulu.
 - Bandingkan hasilnya dengan `hermes/config-contoh.yaml` (perintah `hermes config edit` membuka file pengaturannya).
 
-### A6. Pasang SOUL.md dan kunci skill
+### A6. Tambahkan aturan pertanahan ke SOUL.md dan kunci skill
+**Bila Anda sudah punya SOUL.md sendiri**, jangan ditimpa. Simpan cadangannya, lalu sambungkan tambahan pendek di akhirnya:
 ```
-cp ~/.hermes/SOUL.md ~/.hermes/SOUL.md.cadangan 2>/dev/null
+cp ~/.hermes/SOUL.md ~/.hermes/SOUL.md.cadangan
+cat /opt/agen-pertanahan-mcp/hermes/SOUL-tambahan.md >> ~/.hermes/SOUL.md
+```
+- Tambahan ini berisi lima aturan: memuat skill pertanahan, membaca berkas dengan `baca_berkas`, tidak menebak, persetujuan, dan baris MEDIA.
+- Perintah `cat ... >>` cukup dijalankan **sekali**. Bila dijalankan dua kali, tambahannya tertulis dua kali; pulihkan dengan `cp ~/.hermes/SOUL.md.cadangan ~/.hermes/SOUL.md`, lalu jalankan lagi sekali.
+
+**Bila belum punya SOUL.md sendiri**, pakai versi lengkap yang meniru gaya bot:
+```
 cp /opt/agen-pertanahan-mcp/hermes/SOUL.md ~/.hermes/SOUL.md
+```
+
+Lalu kunci keempat skill pertanahan:
+```
 for s in pengaduan telaahan notula surat; do hermes curator lock pertanahan-$s; done
 ```
-- `SOUL.md` berisi cara berkomunikasi bot: bahasa Indonesia, tanpa asumsi, [PERLU CEK], dan aturan persetujuan.
-- SOUL.md lama Anda disimpan sebagai `SOUL.md.cadangan`.
-- Bila `hermes curator lock` tidak dikenal, versi Hermes Anda belum diperbarui. Ulangi A1, atau sementara pakai `hermes curator pin`. Pin hanya mencegah skill dihapus, bukan diubah; pengaman `write_approval` tetap berlaku.
+Bila `hermes curator lock` tidak dikenal, versi Hermes Anda belum diperbarui. Ulangi A1, atau sementara pakai `hermes curator pin`. Pin hanya mencegah skill dihapus, bukan diubah; pengaman `write_approval` tetap berlaku.
 
 ### A7. Nyalakan ulang gateway Hermes
+Gateway adalah bagian Hermes yang tersambung ke Telegram. Menyalakannya ulang membuat Hermes memuat server MCP, skill, dan SOUL.md yang baru.
 ```
 hermes gateway restart
+hermes gateway status
 ```
-Bila gateway Anda berjalan sebagai layanan sistem, tambahkan `--system`.
+- Bila `status` menyebut layanan sistem (system service), jalankan `hermes gateway restart --system`.
+- Selama gateway menyala ulang (beberapa detik), bot Hermes di Telegram tidak menjawab.
 
 ### A8. Uji coba di bot Telegram Hermes
 1. Kirim "halo". Hermes harus menjawab dalam bahasa Indonesia.
@@ -157,9 +176,10 @@ Ulangi langkah A8.
 Bila ada perubahan aturan atau format (misalnya pejabat penanda tangan berganti), perbarui bot seperti biasa, lalu jalankan sebagai root:
 ```
 cd /opt/agen-pertanahan-mcp && git pull -q && npm ci --omit=dev --no-audit --no-fund
-cp /opt/agen-pertanahan-mcp/hermes/SOUL.md ~hermes/.hermes/SOUL.md 2>/dev/null || cp /opt/agen-pertanahan-mcp/hermes/SOUL.md ~/.hermes/SOUL.md
 ```
 Setelah itu, nyalakan ulang gateway Hermes seperti di langkah A7 atau B4.
+- Skill ikut terbarui dengan sendirinya, karena dibaca langsung dari folder ini.
+- SOUL.md tidak ikut terbarui. Bila isi `hermes/SOUL-tambahan.md` berubah, sesuaikan SOUL.md Anda sendiri.
 
 Skill dan SOUL.md dibuat dari aturan bot (`docs/KEPUTUSAN.md`, `src/agent/pengetahuan/`, `src/agent/prompt.js`) dengan `npm run hermes`. Uji otomatis memastikan keduanya tidak pernah tertinggal dari aturan bot.
 
